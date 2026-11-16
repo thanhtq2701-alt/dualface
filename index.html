@@ -1,381 +1,198 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Flappy Bird Pro - 2 Players</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        body {
-            margin: 0;
-            overflow: hidden;
-            background-color: #4ec0ca;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            touch-action: manipulation;
-        }
-        canvas {
-            display: block;
-            margin: 0 auto;
-            background-color: #70c5ce;
-            box-shadow: 0 0 20px rgba(0,0,0,0.2);
-            max-width: 100%;
-            max-height: 100vh;
-        }
-        #ui-layer {
-            position: absolute;
-            top: 0;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 320px;
-            height: 480px;
-            pointer-events: none;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-        }
-        .score-text {
-            position: absolute;
-            top: 20px;
-            color: white;
-            font-size: 32px;
-            font-weight: bold;
-            text-shadow: 2px 2px 0 #000;
-            pointer-events: none;
-            display: flex;
-            gap: 40px;
-        }
-        .message-box {
-            background: rgba(255, 255, 255, 0.95);
-            padding: 20px;
-            border-radius: 15px;
-            text-align: center;
-            border: 4px solid #553847;
-            pointer-events: auto;
-            width: 90%;
-        }
-        #webcam-container {
-            position: relative;
-            width: 240px;
-            height: 180px;
-            margin: 10px auto;
-            background: #000;
-            border-radius: 8px;
-            overflow: hidden;
-        }
-        #webcam-video {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            transform: scaleX(-1);
-        }
-        .camera-guide {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 80px;
-            height: 80px;
-            border: 2px dashed #fff;
-            box-shadow: 0 0 0 1000px rgba(0,0,0,0.4);
-            pointer-events: none;
-        }
-        .player-tag {
-            padding: 2px 8px;
-            border-radius: 4px;
-            font-size: 12px;
-            font-weight: bold;
-            color: white;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0e1222">
+  <meta name="description" content="Dual Face: Flappy Bird 1-4 người chơi dùng chính khuôn mặt của bạn, nhiều màn chơi khác nhau.">
+  <title>Dual Face · Flappy bằng mặt bạn</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🐥%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="web/css/style.css">
 </head>
 <body>
+<div id="app">
+  <div id="stage-wrap">
+    <div id="stage">
+      <canvas id="game" width="400" height="600" aria-label="Sân chơi" role="img"></canvas>
 
-<canvas id="gameCanvas"></canvas>
+      <div id="hud" class="hidden" aria-live="polite"></div>
+      <div id="hud-level" class="hidden"></div>
+      <div id="touch-zones" aria-hidden="true"></div>
+      <div id="countdown" aria-live="assertive"></div>
 
-<div id="ui-layer">
-    <div id="scoreDisplay" class="score-text hidden">
-        <div id="p1-score-ui" class="text-blue-500">P1: 0</div>
-        <div id="p2-score-ui" class="text-red-500">P2: 0</div>
-    </div>
-    
-    <!-- Màn hình chụp ảnh -->
-    <div id="setupScreen" class="message-box">
-        <h1 id="setup-title" class="text-xl font-bold mb-2 text-blue-600">NGƯỜI CHƠI 1</h1>
-        <p id="setup-desc" class="text-xs mb-2">Căn chỉnh mặt và nhấn chụp (Dùng Space)</p>
-        
-        <div id="webcam-container">
-            <video id="webcam-video" autoplay playsinline></video>
-            <div class="camera-guide"></div>
-        </div>
-        
-        <button id="capture-btn" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-6 rounded-full w-full mb-2">CHỤP ẢNH</button>
-        <button id="skip-btn" class="text-gray-500 text-sm underline">Sử dụng mặc định</button>
-    </div>
+      <div id="topbar">
+        <button id="btn-sound" title="Bật/tắt âm thanh" aria-label="Bật tắt âm thanh">🔊</button>
+        <button id="btn-full" title="Toàn màn hình" aria-label="Toàn màn hình">⛶</button>
+      </div>
 
-    <!-- Màn hình bắt đầu -->
-    <div id="startScreen" class="message-box hidden">
-        <h1 class="text-2xl font-bold mb-4 text-orange-600">DUAL FLAPPY</h1>
-        <div class="flex justify-center gap-4 mb-4">
-            <div class="text-center">
-                <canvas id="p1-face-canvas" width="60" height="60" class="border-2 border-blue-500 rounded-full bg-white"></canvas>
-                <p class="text-[10px] mt-1 font-bold text-blue-600">P1: PHÍM CÁCH</p>
+      <!-- TRANG CHỦ -->
+      <section id="screen-home" class="overlay" aria-label="Trang chủ">
+        <div class="overlay-card">
+          <h1 class="title"><span class="a">DUAL</span> <span class="b">FACE</span></h1>
+          <p class="subtitle">Flappy Bird bằng chính khuôn mặt bạn · 1-4 người cùng một bàn phím</p>
+
+          <div class="section-label">Số người chơi</div>
+          <div id="seg-count" class="seg" role="group" aria-label="Số người chơi">
+            <button data-n="1">1</button><button data-n="2">2</button><button data-n="3">3</button><button data-n="4">4</button>
+          </div>
+
+          <div class="section-label">Người chơi · bấm vào ảnh để chụp mặt</div>
+          <div id="players" class="players"></div>
+
+          <div class="stack" style="margin-top:14px">
+            <button id="btn-go-levels" class="btn block" data-autofocus>🗺️ CHỌN MÀN CHƠI</button>
+            <div class="row">
+              <button id="btn-quick" class="btn secondary">⚡ Chơi nhanh</button>
+              <button id="btn-help" class="btn secondary">❓ Hướng dẫn</button>
             </div>
-            <div class="text-center">
-                <canvas id="p2-face-canvas" width="60" height="60" class="border-2 border-red-500 rounded-full bg-white"></canvas>
-                <p class="text-[10px] mt-1 font-bold text-red-600">P2: CHUỘT TRÁI</p>
-            </div>
+            <label class="section-label" style="display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;cursor:pointer">
+              <input type="checkbox" id="opt-unlock"> Mở sẵn tất cả màn (không cần qua màn trước)
+            </label>
+          </div>
         </div>
-        <button onclick="startGame()" class="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-6 rounded-full w-full">BẮT ĐẦU</button>
-    </div>
+      </section>
 
-    <!-- Màn hình kết thúc -->
-    <div id="gameOverScreen" class="message-box hidden">
-        <h1 class="text-2xl font-bold mb-2 text-red-600">KẾT THÚC</h1>
-        <div id="winner-text" class="text-lg font-bold mb-4 text-gray-700"></div>
-        <button onclick="startGame()" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-6 rounded-full w-full">CHƠI LẠI</button>
+      <!-- CHỌN MÀN -->
+      <section id="screen-levels" class="overlay hidden" aria-label="Chọn màn">
+        <div class="overlay-card">
+          <h2 class="title" style="font-size:24px">CHỌN MÀN</h2>
+          <p class="subtitle">Đạt đủ số ống mục tiêu để mở màn tiếp theo. 🏆 là kỷ lục của máy này.</p>
+          <div id="levels" class="levels"></div>
+          <div class="row" style="margin-top:12px">
+            <button id="btn-levels-back" class="btn secondary" data-autofocus>← Quay lại</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- SẴN SÀNG -->
+      <section id="screen-ready" class="overlay hidden" aria-label="Sẵn sàng">
+        <div class="overlay-card">
+          <div id="ready-level" class="ready-level"></div>
+          <div id="ready-tip" class="tip"></div>
+          <div class="section-label">Điều khiển</div>
+          <div id="ready-controls" class="controls"></div>
+          <p id="ready-touch" class="subtitle hidden" style="margin-top:8px">📱 Trên màn hình cảm ứng: mỗi người chạm vào cột của mình (trái → phải).</p>
+          <p class="subtitle" style="margin-top:8px">Nhiều người: vòng kết thúc khi còn 1 người bay. <kbd>Esc</kbd> để tạm dừng.</p>
+          <div class="section-label">Chế độ</div>
+          <div id="seg-mode" class="seg" role="group" aria-label="Chế độ chơi">
+            <button data-mode="single">Vòng đơn</button><button data-mode="tour">🏆 Giải đấu</button>
+          </div>
+          <p id="ready-tour-note" class="subtitle hidden" style="margin-top:8px"></p>
+          <div class="stack" style="margin-top:10px">
+            <button id="btn-start" class="btn block ok" data-autofocus>▶ BẮT ĐẦU</button>
+            <button id="btn-ready-back" class="btn ghost">← Đổi màn khác</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- TẠM DỪNG -->
+      <section id="screen-pause" class="overlay hidden" aria-label="Tạm dừng">
+        <div class="overlay-card">
+          <h2 class="title" style="font-size:26px">⏸ TẠM DỪNG</h2>
+          <div class="stack" style="margin-top:12px">
+            <button id="btn-resume" class="btn block ok" data-autofocus>▶ Tiếp tục (Esc)</button>
+            <button id="btn-restart" class="btn block secondary">🔄 Chơi lại màn</button>
+            <button id="btn-quit" class="btn block ghost">🏠 Về trang chủ</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- KẾT QUẢ -->
+      <section id="screen-results" class="overlay hidden" aria-label="Kết quả">
+        <div class="overlay-card">
+          <div id="results-title" class="winner-title"></div>
+          <div id="results-badges" class="center row" style="justify-content:center"></div>
+          <div id="results-rank" class="rank"></div>
+          <div id="results-tour" class="series hidden" style="margin-bottom:10px"></div>
+          <div class="stack">
+            <button id="btn-again" class="btn block" data-autofocus>🔄 Chơi lại (Enter)</button>
+            <button id="btn-tour-next" class="btn block ok hidden">Vòng tiếp</button>
+            <button id="btn-next-level" class="btn block ok hidden">Màn tiếp</button>
+            <button id="btn-share" class="btn block secondary">💾 Lưu ảnh kết quả</button>
+            <div class="row">
+              <button id="btn-change-level" class="btn secondary">🗺️ Đổi màn</button>
+              <button id="btn-home" class="btn secondary">🏠 Trang chủ</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- CAMERA -->
+      <section id="screen-camera" class="overlay hidden" aria-label="Chụp mặt">
+        <div class="overlay-card">
+          <h2 id="cam-title" style="font-size:20px">📷 Chụp mặt</h2>
+          <p class="subtitle">Đưa mặt vào vòng tròn rồi bấm chụp (hoặc <kbd>Space</kbd>). Ảnh chỉ lưu trên máy này.</p>
+          <div id="cam-box">
+            <video id="cam-video" autoplay playsinline muted></video>
+            <div id="cam-guide"></div>
+            <div id="cam-flash"></div>
+          </div>
+          <div id="cam-error" role="alert"></div>
+          <div class="stack" style="margin-top:10px">
+            <button id="btn-capture" class="btn block ok" disabled>📸 CHỤP</button>
+            <button id="btn-cam-cancel" class="btn ghost">Huỷ · dùng biểu tượng</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- CHỌN EMOJI -->
+      <section id="screen-emoji" class="overlay hidden" aria-label="Chọn biểu tượng">
+        <div class="overlay-card">
+          <h2 style="font-size:20px">😀 Chọn biểu tượng</h2>
+          <div id="emoji-grid" class="emoji-grid"></div>
+          <button id="btn-emoji-cancel" class="btn ghost block" style="margin-top:10px" data-autofocus>Đóng</button>
+        </div>
+      </section>
+
+      <!-- HƯỚNG DẪN -->
+      <section id="screen-help" class="overlay hidden" aria-label="Hướng dẫn">
+        <div class="overlay-card">
+          <h2 style="font-size:22px">❓ Cách chơi</h2>
+          <ol style="padding-left:18px;font-size:14px;line-height:1.6;color:var(--text)">
+            <li>Chọn số người (1-4), mỗi người bấm vào ảnh để <b>chụp mặt</b> bằng webcam hoặc chọn biểu tượng.</li>
+            <li>Chọn màn. Màn sau mở khi có người đạt đủ số ống mục tiêu của màn trước.</li>
+            <li>Mỗi người có phím nhảy riêng: <kbd>Space</kbd>, <kbd>↑</kbd>, <kbd>I</kbd>, <kbd>X</kbd>. Trên điện thoại, chạm vào cột của mình. Có tay cầm: tay cầm thứ N điều khiển người N, nút A để nhảy.</li>
+            <li>Vật phẩm trong vòng tròn vàng: 🛡️ khiên đỡ 1 lần, 🪶 bay nhẹ, 🍄 thu nhỏ, 🎈 làm đối thủ phình to.</li>
+            <li>Chế độ <b>Giải đấu</b>: chơi lần lượt tất cả các màn, cộng điểm theo thứ hạng, cuối giải có nhà vô địch.</li>
+            <li>Nhấn phím nhảy để bắt đầu bay. Chạm ống, đất, trần, dơi hay thiên thạch là bị loại.</li>
+            <li>Nhiều người: ai bay lâu nhất thắng vòng. Một người: cố đạt kỷ lục.</li>
+            <li><kbd>Esc</kbd> hoặc <kbd>P</kbd> để tạm dừng. 🔊 để tắt tiếng. ⛶ để toàn màn hình.</li>
+          </ol>
+          <p class="subtitle">Ảnh mặt chỉ lưu trong trình duyệt của bạn (localStorage), không gửi đi đâu.</p>
+          <button id="btn-help-close" class="btn block" data-autofocus>Đã hiểu</button>
+        </div>
+      </section>
+
+      <div id="toast" class="toast" role="status"></div>
     </div>
+  </div>
+
+  <aside id="side" aria-label="Bảng thông tin">
+    <div class="panel">
+      <h3>🏁 Số vòng thắng</h3>
+      <div id="side-series" class="series"></div>
+    </div>
+    <div class="panel">
+      <h3>🏆 Kỷ lục từng màn</h3>
+      <div id="side-records" class="series"></div>
+    </div>
+    <div class="panel help">
+      <h3>⌨️ Phím</h3>
+      P1 <kbd>Space</kbd>/<kbd>W</kbd> · P2 <kbd>↑</kbd>/<kbd>Enter</kbd><br>
+      P3 <kbd>I</kbd>/<kbd>P</kbd> · P4 <kbd>X</kbd>/<kbd>Num0</kbd><br>
+      Tạm dừng <kbd>Esc</kbd>
+    </div>
+  </aside>
 </div>
 
-<script>
-/**
- * WEBCAM & CAPTURE LOGIC
- */
-const video = document.getElementById('webcam-video');
-const setupScreen = document.getElementById('setupScreen');
-const startScreen = document.getElementById('startScreen');
-const setupTitle = document.getElementById('setup-title');
-const setupDesc = document.getElementById('setup-desc');
-const captureBtn = document.getElementById('capture-btn');
-const skipBtn = document.getElementById('skip-btn');
-
-let currentSetupPlayer = 1;
-let p1Image = null;
-let p2Image = null;
-
-async function initCamera() {
-    try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 320, height: 240 }, audio: false });
-        video.srcObject = stream;
-    } catch (err) {
-        console.error("Camera error:", err);
-        setupScreen.innerHTML = `<p class="text-red-500 text-sm">Lỗi Camera. Vui lòng cấp quyền.</p>`;
-    }
-}
-
-captureBtn.addEventListener('click', () => {
-    const canvasRef = document.getElementById(`p${currentSetupPlayer}-face-canvas`);
-    const ctxRef = canvasRef.getContext('2d');
-    const size = 120;
-    const centerX = video.videoWidth / 2;
-    const centerY = video.videoHeight / 2;
-
-    ctxRef.save();
-    ctxRef.scale(-1, 1);
-    ctxRef.drawImage(video, centerX - size/2, centerY - size/2, size, size, -60, 0, 60, 60);
-    ctxRef.restore();
-
-    const img = new Image();
-    img.src = canvasRef.toDataURL();
-    
-    if (currentSetupPlayer === 1) {
-        p1Image = img;
-        currentSetupPlayer = 2;
-        setupTitle.innerText = "NGƯỜI CHƠI 2";
-        setupTitle.classList.replace('text-blue-600', 'text-red-600');
-        setupDesc.innerText = "Căn chỉnh mặt và nhấn chụp (Dùng Chuột)";
-        captureBtn.classList.replace('bg-blue-500', 'bg-red-500');
-        captureBtn.classList.replace('hover:bg-blue-600', 'hover:bg-red-600');
-    } else {
-        p2Image = img;
-        finishSetup();
-    }
-});
-
-skipBtn.addEventListener('click', finishSetup);
-
-function finishSetup() {
-    const stream = video.srcObject;
-    if (stream) stream.getTracks().forEach(track => track.stop());
-    setupScreen.classList.add('hidden');
-    startScreen.classList.remove('hidden');
-}
-
-/**
- * AUDIO ENGINE
- */
-const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-function playSound(freq, type='triangle') {
-    if (audioCtx.state === 'suspended') audioCtx.resume();
-    const osc = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
-    osc.connect(gain); gain.connect(audioCtx.destination);
-    osc.type = type;
-    osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(freq*2, audioCtx.currentTime + 0.1);
-    gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
-    osc.start(); osc.stop(audioCtx.currentTime + 0.1);
-}
-
-/**
- * GAME ENGINE
- */
-const canvas = document.getElementById("gameCanvas");
-const ctx = canvas.getContext("2d");
-canvas.width = 320;
-canvas.height = 480;
-
-let gameState = 'SETUP';
-let pipes = [];
-let frame = 0;
-
-let players = [
-    { id: 1, x: 40, y: 240, w: 38, h: 38, vel: 0, score: 0, alive: true, color: '#3b82f6', jumpKey: 'Space' },
-    { id: 2, x: 70, y: 240, w: 38, h: 38, vel: 0, score: 0, alive: true, color: '#ef4444', jumpKey: 'Mouse' }
-];
-
-const gravity = 0.22;
-const jumpPower = -4.5;
-
-function startGame() {
-    gameState = 'PLAYING';
-    pipes = [];
-    frame = 0;
-    players.forEach(p => {
-        p.y = 240; p.vel = 0; p.score = 0; p.alive = true;
-    });
-    document.getElementById("scoreDisplay").classList.remove("hidden");
-    document.getElementById("startScreen").classList.add("hidden");
-    document.getElementById("gameOverScreen").classList.add("hidden");
-    updateScoreUI();
-}
-
-function updateScoreUI() {
-    document.getElementById("p1-score-ui").innerText = `P1: ${players[0].score}`;
-    document.getElementById("p2-score-ui").innerText = `P2: ${players[1].score}`;
-}
-
-window.addEventListener("keydown", (e) => {
-    if (gameState === 'PLAYING' && e.code === "Space" && players[0].alive) {
-        players[0].vel = jumpPower;
-        playSound(150);
-    }
-});
-
-canvas.addEventListener("mousedown", (e) => {
-    if (gameState === 'PLAYING' && players[1].alive) {
-        players[1].vel = jumpPower;
-        playSound(250);
-    }
-});
-
-function drawPlayer(p, img) {
-    if (!p.alive) return;
-    ctx.save();
-    ctx.translate(p.x + p.w/2, p.y + p.h/2);
-    ctx.rotate(Math.min(Math.PI/4, Math.max(-Math.PI/6, p.vel * 0.1)));
-
-    ctx.beginPath();
-    ctx.arc(0, 0, p.w/2, 0, Math.PI * 2);
-    ctx.clip();
-
-    if (img) {
-        ctx.drawImage(img, -p.w/2, -p.h/2, p.w, p.h);
-    } else {
-        ctx.fillStyle = p.color;
-        ctx.fillRect(-p.w/2, -p.h/2, p.w, p.h);
-    }
-    
-    ctx.restore();
-    ctx.strokeStyle = p.color;
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.arc(p.x + p.w/2, p.y + p.h/2, p.w/2, 0, Math.PI * 2);
-    ctx.stroke();
-}
-
-function update() {
-    if (gameState !== 'PLAYING') return;
-
-    players.forEach(p => {
-        if (!p.alive) return;
-        p.vel += gravity;
-        p.y += p.vel;
-        if (p.y + p.h > canvas.height || p.y < 0) {
-            p.alive = false;
-            playSound(80, 'sawtooth');
-        }
-    });
-
-    if (frame % 100 === 0) {
-        const gap = 140;
-        const h = Math.floor(Math.random() * (canvas.height - gap - 100)) + 50;
-        pipes.push({ x: canvas.width, h, gap, w: 50, p1p: false, p2p: false });
-    }
-
-    for (let i = pipes.length - 1; i >= 0; i--) {
-        let pipe = pipes[i];
-        pipe.x -= 2.2;
-
-        players.forEach(p => {
-            if (!p.alive) return;
-            // Collision
-            if (p.x + p.w - 8 > pipe.x && p.x + 8 < pipe.x + pipe.w) {
-                if (p.y + 8 < pipe.h || p.y + p.h - 8 > pipe.h + pipe.gap) {
-                    p.alive = false;
-                    playSound(80, 'sawtooth');
-                }
-            }
-            // Score
-            if (!pipe[`p${p.id}p`] && pipe.x + pipe.w < p.x) {
-                p.score++;
-                pipe[`p${p.id}p`] = true;
-                updateScoreUI();
-                playSound(600, 'sine');
-            }
-        });
-
-        if (pipe.x + pipe.w < 0) pipes.splice(i, 1);
-    }
-
-    if (!players[0].alive && !players[1].alive) {
-        gameState = 'GAMEOVER';
-        const winText = document.getElementById("winner-text");
-        if (players[0].score > players[1].score) winText.innerText = "NGƯỜI CHƠI 1 THẮNG!";
-        else if (players[1].score > players[0].score) winText.innerText = "NGƯỜI CHƠI 2 THẮNG!";
-        else winText.innerText = "HÒA NHAU!";
-        document.getElementById("gameOverScreen").classList.remove("hidden");
-    }
-    frame++;
-}
-
-function draw() {
-    ctx.fillStyle = "#70c5ce";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    pipes.forEach(p => {
-        ctx.fillStyle = "#73bf2e";
-        ctx.strokeStyle = "#553847";
-        ctx.lineWidth = 2;
-        ctx.fillRect(p.x, 0, p.w, p.h);
-        ctx.strokeRect(p.x, -2, p.w, p.h + 2);
-        ctx.fillRect(p.x, p.h + p.gap, p.w, canvas.height);
-        ctx.strokeRect(p.x, p.h + p.gap, p.w, canvas.height + 2);
-    });
-
-    drawPlayer(players[0], p1Image);
-    drawPlayer(players[1], p2Image);
-
-    ctx.fillStyle = "#ded895";
-    ctx.fillRect(0, canvas.height - 15, canvas.width, 15);
-    
-    update();
-    requestAnimationFrame(draw);
-}
-
-initCamera();
-draw();
-</script>
+<script src="web/js/core/util.js"></script>
+<script src="web/js/core/physics.js"></script>
+<script src="web/js/core/audio.js"></script>
+<script src="web/js/core/input.js"></script>
+<script src="web/js/core/storage.js"></script>
+<script src="web/js/core/camera.js"></script>
+<script src="web/js/engine/flappy.js"></script>
+<script src="web/js/levels.js"></script>
+<script src="web/js/app.js"></script>
 </body>
 </html>
