@@ -29,7 +29,7 @@
       <section id="screen-home" class="overlay" aria-label="Trang chủ">
         <div class="overlay-card">
           <h1 class="title"><span class="a">DUAL</span> <span class="b">FACE</span></h1>
-          <p class="subtitle">Flappy Bird bằng chính khuôn mặt bạn · 1-4 người cùng một bàn phím</p>
+          <p class="subtitle">Flappy Bird bằng chính khuôn mặt bạn · 1-4 người cùng một bàn phím <span id="online-badge" class="badge hidden" title="Kỷ lục của bạn sẽ được gửi lên bảng xếp hạng chung (chỉ tên, biểu tượng và số ống; không gửi ảnh mặt)">🌍 Online</span></p>
 
           <div class="section-label">Số người chơi</div>
           <div id="seg-count" class="seg" role="group" aria-label="Số người chơi">
@@ -56,7 +56,7 @@
       <section id="screen-levels" class="overlay hidden" aria-label="Chọn màn">
         <div class="overlay-card">
           <h2 class="title" style="font-size:24px">CHỌN MÀN</h2>
-          <p class="subtitle">Đạt đủ số ống mục tiêu để mở màn tiếp theo. 🏆 là kỷ lục của máy này.</p>
+          <p class="subtitle">Đạt đủ số ống mục tiêu để mở màn tiếp theo. 🏆 là kỷ lục của máy này, 🌍 là kỷ lục online.</p>
           <div id="levels" class="levels"></div>
           <div class="row" style="margin-top:12px">
             <button id="btn-levels-back" class="btn secondary" data-autofocus>← Quay lại</button>
@@ -104,6 +104,7 @@
           <div id="results-badges" class="center row" style="justify-content:center"></div>
           <div id="results-rank" class="rank"></div>
           <div id="results-tour" class="series hidden" style="margin-bottom:10px"></div>
+          <div id="results-online" class="online hidden"></div>
           <div class="stack">
             <button id="btn-again" class="btn block" data-autofocus>🔄 Chơi lại (Enter)</button>
             <button id="btn-tour-next" class="btn block ok hidden">Vòng tiếp</button>
@@ -158,7 +159,7 @@
             <li>Nhiều người: ai bay lâu nhất thắng vòng. Một người: cố đạt kỷ lục.</li>
             <li><kbd>Esc</kbd> hoặc <kbd>P</kbd> để tạm dừng. 🔊 để tắt tiếng. ⛶ để toàn màn hình.</li>
           </ol>
-          <p class="subtitle">Ảnh mặt chỉ lưu trong trình duyệt của bạn (localStorage), không gửi đi đâu.</p>
+          <p class="subtitle">Ảnh mặt chỉ lưu trong trình duyệt của bạn (localStorage), không gửi đi đâu. Khi có 🌍 Online, chỉ tên + biểu tượng + số ống được gửi lên bảng xếp hạng chung.</p>
           <button id="btn-help-close" class="btn block" data-autofocus>Đã hiểu</button>
         </div>
       </section>
@@ -191,6 +192,7 @@
 <script src="web/js/core/input.js"></script>
 <script src="web/js/core/storage.js"></script>
 <script src="web/js/core/camera.js"></script>
+<script src="web/js/core/api.js"></script>
 <script src="web/js/engine/flappy.js"></script>
 <script src="web/js/levels.js"></script>
 <script src="web/js/app.js"></script>

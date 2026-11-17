@@ -1,0 +1,17 @@
+# Render Blueprint: Dashboard → New → Blueprint → chọn repo này.
+# Sau khi tạo, dán 2 biến Upstash vào Environment (Render sẽ hỏi vì sync: false).
+services:
+  - type: web
+    name: dualface
+    runtime: node
+    plan: free
+    buildCommand: ""
+    startCommand: node server/index.js
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: 22
+      - key: UPSTASH_REDIS_REST_URL
+        sync: false
+      - key: UPSTASH_REDIS_REST_TOKEN
+        sync: false

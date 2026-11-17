@@ -64,9 +64,16 @@ index.html
 ### Tay cầm
 `DF.input.pollGamepads()` gọi mỗi khung khi đang chơi; tay cầm thứ i → người chơi i; nút 0-3 là nhảy (cạnh nhấn).
 
+### Bảng xếp hạng online (`server/`, `web/js/core/api.js`)
+- Server Node thuần: phục vụ `index.html` + `web/` (whitelist, không lộ `server/`, `tests/`), API `/api/*`, giới hạn 60 req/phút/IP.
+- Kho điểm: Upstash Redis REST (`ZADD GT` nên chỉ ghi khi cao hơn; hash meta giữ emoji + thời gian) hoặc bộ nhớ khi thiếu biến môi trường. Cùng interface `submit/top/bests` để test không cần mạng.
+- Client: `DF.api` tự tắt khi chạy từ `file://` hoặc khi `/api/health` 404 (GitHub Pages). Sau mỗi vòng, điểm > 0 của từng người được gửi với tên + emoji; màn kết quả hiện top 10, lưới chọn màn hiện 🌍 kỷ lục thế giới.
+- Không chống gian lận: đây là trò chơi tiệc, ai gửi POST tay thì tự chịu. Có thể thêm HMAC từ server nếu cần.
+
 ## Đã làm
 - v2.0: 8 màn, 1-4 người, HUD, kết quả, kỷ lục, mở khoá, test, CI. (16/11/2026)
 - v2.1: vật phẩm, màn Băng giá & Núi lửa (10 màn), giải đấu, lưu ảnh kết quả, tay cầm. (16/11/2026)
+- v2.2: server + Upstash, bảng xếp hạng online, render.yaml. (16/11/2026)
 
 ## Ý tưởng tiếp theo
 - Màn "Boss": một ống khổng lồ đuổi theo, khe đổi vị trí liên tục.

@@ -10,7 +10,8 @@ Trò Flappy Bird 1-4 người dùng mặt thật (webcam), nhiều màn. Trang t
 - Sân chơi logic 400×600, scale bằng `transform` trên `#stage`; overlay HTML nằm trong `#stage` nên luôn khớp canvas.
 
 ## Lệnh
-- `npm start` → server dev cổng 8080. `npm test` → `node --test tests/`.
+- `npm start` → server Node (tĩnh + API, `server/index.js`) cổng 8080; `npm run static` → chỉ tĩnh. `npm test` → `node --test tests/`.
+- Deploy: Render Blueprint (`render.yaml`) + 2 biến Upstash. Không có biến → kho điểm bộ nhớ. Không gửi ảnh mặt lên server.
 - `npm run shot` (sau `npm start`): chụp & kiểm tra lỗi console qua DevTools Protocol; tham số URL gỡ lỗi: `?screen=levels`, `?level=city&bots=1&players=3`, `?bots=1&players=3&tour=volcano`.
 - Vật phẩm/cơ chế mới: thêm cờ trong `mechanics`/`items` của level, xử lý trong `Flappy.update()` + `draw()`, và thêm test trong `tests/items.test.js`.
 

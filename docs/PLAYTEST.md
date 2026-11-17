@@ -25,7 +25,14 @@
 - `npm test`: 26/26 (thêm: khiên, thu nhỏ/phình to, lông vũ, nhặt vật phẩm, nhũ băng, cầu lửa, bot trên 2 màn mới).
 - `npm run shot`: 10 cảnh, không lỗi console; giải đấu tính điểm và chuyển vòng đúng.
 
+## Kiểm tra v2.2 (16/11/2026)
+- `npm test`: 29/29 (thêm API: validate, gửi/đọc điểm, chỉ ghi khi cao hơn, whitelist tĩnh).
+- Chrome thật + server bộ nhớ: màn kết quả hiện bảng online với người vừa chơi được tô vàng; lưới màn hiện 🌍.
+- Phát hiện & sửa: `renderLevels` gọi lại chính nó sau khi nhận bests → lặp vô hạn gọi API, dính giới hạn 429. Giờ chỉ gọi 1 lần/30 giây.
+- Phát hiện & sửa: server cache JS 5 phút khiến trình duyệt chạy code cũ sau khi sửa (người chơi cũng sẽ gặp sau mỗi lần deploy). Giờ dùng `Cache-Control: no-cache`; công cụ chụp tắt cache. Đã xác nhận màn chọn màn chỉ gọi 1 health + 1 bests.
+
 ## Cần chơi thử thật (chưa làm được tự động)
+- [ ] Trên Render với Upstash thật: `/api/health` trả `store: "upstash"`, điểm còn sau khi redeploy.
 - [ ] Tay cầm thật: nút A nhận đúng người, không nhận đúp.
 - [ ] Nút "Lưu ảnh kết quả" trên điện thoại (hộp thoại chia sẻ) và trên máy tính (tải PNG).
 - [ ] Cân bằng vật phẩm: 🎈 phình to có quá mạnh khi 4 người không, có nên giảm thời gian 300 → 200 tick.

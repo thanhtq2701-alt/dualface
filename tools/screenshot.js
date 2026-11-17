@@ -66,6 +66,8 @@ async function main() {
   const { result: { sessionId } } = await send('Target.attachToTarget', { targetId, flatten: true });
   await send('Runtime.enable', {}, sessionId);
   await send('Page.enable', {}, sessionId);
+  await send('Network.enable', {}, sessionId);
+  await send('Network.setCacheDisabled', { cacheDisabled: true }, sessionId); // luôn chạy code mới nhất
 
   let failed = 0;
   for (const [name, query, wait] of SHOTS) {

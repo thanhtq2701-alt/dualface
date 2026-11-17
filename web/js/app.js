@@ -71,7 +71,7 @@
     if (name !== 'playing') {
       const card = $('#screen-' + name + ' .overlay-card');
       const first = card && card.querySelector('[data-autofocus]');
-      if (first) setTimeout(() => first.focus(), 30);
+      if (first) setTimeout(() => { first.focus({ preventScroll: true }); const ov = $('#screen-' + name); if (ov) ov.scrollTop = 0; }, 30);
     }
     if (name === 'camera') return;
     if (DF.camera.active) DF.camera.stop();
@@ -115,10 +115,16 @@
   function isUnlocked(level) {
     return level.order === 1 || state.settings.unlockAll || DF.storage.getUnlocked().includes(level.id);
   }
+  let onlineBests = {};
   function renderLevels() {
     const grid = $('#levels');
     grid.innerHTML = '';
     const rec = DF.storage.getRecords();
+    // Lấy kỷ lục online tối đa 1 lần / 30 giây (tránh gọi lặp khi vẽ lại lưới)
+    if (DF.api.available && Date.now() - (renderLevels._at || 0) > 30000) {
+      renderLevels._at = Date.now();
+      DF.api.bests().then(r => { if (r && r.bests) { onlineBests = r.bests; if (state.screen === 'levels') renderLevels(); } });
+    }
     DF.LEVELS.forEach(l => {
       const b = el('button', 'lcard');
       b.style.setProperty('--sky0', l.theme.sky[0]); b.style.setProperty('--sky1', l.theme.sky[1]);
@@ -129,7 +135,7 @@
       if (state.level && state.level.id === l.id) b.classList.add('selected');
       b.innerHTML = `<div class="ic">${l.icon}</div><div class="nm">${l.order}. ${l.name}</div>
         <div class="stars">${'★'.repeat(l.difficulty)}${'☆'.repeat(5 - l.difficulty)}</div>
-        <div class="tg">${l.tagline}</div>${r ? `<div class="best">🏆 ${r.best}</div>` : ''}`;
+        <div class="tg">${l.tagline}</div>${r ? `<div class="best">🏆 ${r.best}</div>` : ''}${onlineBests[l.id] ? `<div class="best world">🌍 ${onlineBests[l.id].score} ${onlineBests[l.id].name}</div>` : ''}`;
       b.setAttribute('aria-label', `${l.name}${unlocked ? '' : ' (chưa mở khoá)'}`);
       b.disabled = !unlocked;
       b.addEventListener('click', () => { DF.audio.sfx.click(); selectLevel(l); });
@@ -263,6 +269,31 @@
     renderResults(results, cleared, newBest);
     setTimeout(() => { show('results'); DF.audio.sfx.win(); }, 300);
     renderSide();
+    submitOnline(results);
+  }
+
+  /* ---- Bảng xếp hạng online ---- */
+  async function submitOnline(results) {
+    const box = $('#results-online');
+    if (!DF.api.available) { box.classList.add('hidden'); return; }
+    box.classList.remove('hidden');
+    box.innerHTML = '<div class="section-label">🌍 Bảng xếp hạng online</div><div class="subtitle" style="margin:0">Đang gửi điểm...</div>';
+    const l = state.level;
+    const mine = new Set();
+    let top = null;
+    for (const r of results) {
+      if (r.score < 1) continue;
+      const prof = state.profiles[r.slot];
+      mine.add(prof.name);
+      const res = await DF.api.submit(l.id, prof.name, r.score, prof.emoji);
+      if (res && res.top) top = res.top;
+    }
+    if (!top) { const t = await DF.api.top(l.id); top = t && t.top; }
+    if (state.level !== l) return; // đã chuyển màn khác
+    if (!top) { box.innerHTML = '<div class="section-label">🌍 Bảng xếp hạng online</div><div class="subtitle" style="margin:0">Không kết nối được máy chủ.</div>'; return; }
+    box.innerHTML = `<div class="section-label">🌍 Bảng xếp hạng online · ${l.icon} ${l.name}</div>` +
+      (top.length ? top.map((t, i) => `<div class="srow${mine.has(t.name) ? ' me' : ''}"><span class="pos">${i + 1}</span><span class="em">${t.emoji || '🙂'}</span>${t.name}<span class="w">${t.score}</span></div>`).join('')
+        : '<div class="subtitle" style="margin:0">Chưa có ai. Bạn là người đầu tiên!</div>');
   }
 
   function renderResults(results, cleared, newBest) {
@@ -510,6 +541,7 @@
 
   async function init() {
     DF.audio.setMuted(!state.settings.sound);
+    DF.api.health().then(h => { $('#online-badge').classList.toggle('hidden', !h); });
     DF.input.attach(stage);
     DF.input.setPlayerCount(state.settings.playerCount);
     await loadProfiles();
