@@ -11,7 +11,9 @@ Trò Flappy Bird 1-4 người dùng mặt thật (webcam), nhiều màn. Trang t
 
 ## Lệnh
 - `npm start` → server Node (tĩnh + API, `server/index.js`) cổng 8080; `npm run static` → chỉ tĩnh. `npm test` → `node --test tests/`.
-- Deploy: Render Blueprint (`render.yaml`) + 2 biến Upstash. Không có biến → kho điểm bộ nhớ. Không gửi ảnh mặt lên server.
+- Deploy: Render Blueprint (`render.yaml`), hiện chưa dùng Upstash nên BXH là bộ nhớ tạm (game ghi "tạm"). Thêm 2 biến Upstash trong Environment để lưu lâu dài; có thể dùng chung DB với repo Hackathon (khoá khác: `df:v2:*` vs `fc:`/`room:`). GitHub Pages deploy bản tĩnh từ nhánh main. Không gửi ảnh mặt lên server.
+- `npm test` dùng mẫu `"tests/*.test.js"` vì Node 22 không nhận tham số thư mục. CI chạy Node 22 và 24.
+- Ảnh README ở `docs/images/`, lấy từ `var/shots/*-stage.png` sau `npm run shot`.
 - `npm run shot` (sau `npm start`): chụp & kiểm tra lỗi console qua DevTools Protocol; tham số URL gỡ lỗi: `?screen=levels`, `?level=city&bots=1&players=3`, `?bots=1&players=3&tour=volcano`.
 - Vật phẩm/cơ chế mới: thêm cờ trong `mechanics`/`items` của level, xử lý trong `Flappy.update()` + `draw()`, và thêm test trong `tests/items.test.js`.
 

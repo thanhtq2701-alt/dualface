@@ -31,6 +31,10 @@
 - Phát hiện & sửa: `renderLevels` gọi lại chính nó sau khi nhận bests → lặp vô hạn gọi API, dính giới hạn 429. Giờ chỉ gọi 1 lần/30 giây.
 - Phát hiện & sửa: server cache JS 5 phút khiến trình duyệt chạy code cũ sau khi sửa (người chơi cũng sẽ gặp sau mỗi lần deploy). Giờ dùng `Cache-Control: no-cache`; công cụ chụp tắt cache. Đã xác nhận màn chọn màn chỉ gọi 1 health + 1 bests.
 
+## Kiểm tra v2.3 (17/11/2026)
+- `npm test`: 32/32 (thêm: trùng tên khác máy không ghi đè, cờ `me`, chặn tên mặc định, làm sạch tên, Redis giả cho `upstashStore`).
+- Chrome thật: tên chứa thẻ HTML hiện đúng dạng chữ; người chơi tên mặc định thấy lời nhắc đặt tên thay vì bị gửi điểm.
+
 ## Cần chơi thử thật (chưa làm được tự động)
 - [ ] Trên Render với Upstash thật: `/api/health` trả `store: "upstash"`, điểm còn sau khi redeploy.
 - [ ] Tay cầm thật: nút A nhận đúng người, không nhận đúp.

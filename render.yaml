@@ -1,5 +1,11 @@
-# Render Blueprint: Dashboard → New → Blueprint → chọn repo này.
-# Sau khi tạo, dán 2 biến Upstash vào Environment (Render sẽ hỏi vì sync: false).
+# Render Blueprint: Dashboard → New → Blueprint → chọn repo dualface → Apply.
+#
+# Không có Upstash: bảng xếp hạng lưu trong bộ nhớ, mất khi server ngủ (15 phút không ai chơi)
+# hoặc deploy lại. Game tự ghi "tạm thời" cho người chơi biết.
+#
+# Bật bảng xếp hạng lâu dài: vào service → Environment → thêm 2 biến
+#   UPSTASH_REDIS_REST_URL, UPSTASH_REDIS_REST_TOKEN
+# Có thể dùng chung database Upstash với repo khác: Dual Face chỉ dùng khoá bắt đầu bằng "df:v2:".
 services:
   - type: web
     name: dualface
@@ -11,7 +17,3 @@ services:
     envVars:
       - key: NODE_VERSION
         value: 22
-      - key: UPSTASH_REDIS_REST_URL
-        sync: false
-      - key: UPSTASH_REDIS_REST_TOKEN
-        sync: false

@@ -79,6 +79,11 @@ async function main() {
     const shot = await send('Page.captureScreenshot', { format: 'png' }, sessionId);
     const file = path.join(OUT, name + '.png');
     fs.writeFileSync(file, Buffer.from(shot.result.data, 'base64'));
+    // Ảnh chỉ khung game (dùng cho README): cắt theo #stage-wrap
+    const rect = await send('Runtime.evaluate', { expression: `JSON.stringify(document.querySelector('#stage-wrap').getBoundingClientRect())`, returnByValue: true }, sessionId);
+    const r = JSON.parse(rect.result.result.value);
+    const crop = await send('Page.captureScreenshot', { format: 'png', clip: { x: r.x, y: r.y, width: r.width, height: r.height, scale: 1 } }, sessionId);
+    fs.writeFileSync(path.join(OUT, name + '-stage.png'), Buffer.from(crop.result.data, 'base64'));
     const stateStr = st.result && st.result.result ? st.result.result.value : '(không đọc được)';
     const bad = errors.length > 0;
     if (bad) failed++;

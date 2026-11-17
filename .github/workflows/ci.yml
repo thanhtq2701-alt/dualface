@@ -7,30 +7,19 @@ on:
 
 jobs:
   test:
+    name: Test (Node ${{ matrix.node }})
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node: [22, 24]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: ${{ matrix.node }}
       - run: npm test
-
-  pages:
-    # Deploy tĩnh lên GitHub Pages (bật Settings > Pages > Source: GitHub Actions)
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    needs: test
-    runs-on: ubuntu-latest
-    permissions:
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: .
-      - id: deployment
-        uses: actions/deploy-pages@v4
+      - name: Server khởi động được
+        run: |
+          PORT=8099 node server/index.js &
+          for i in $(seq 1 20); do curl -fs http://127.0.0.1:8099/api/health && exit 0; sleep 0.5; done
+          exit 1

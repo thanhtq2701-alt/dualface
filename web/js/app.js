@@ -3,6 +3,7 @@
   'use strict';
   const DF = root.DF;
   const $ = s => document.querySelector(s);
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
 
   const COLORS = ['#3b82f6', '#ef4444', '#22c55e', '#a855f7'];
@@ -135,7 +136,7 @@
       if (state.level && state.level.id === l.id) b.classList.add('selected');
       b.innerHTML = `<div class="ic">${l.icon}</div><div class="nm">${l.order}. ${l.name}</div>
         <div class="stars">${'★'.repeat(l.difficulty)}${'☆'.repeat(5 - l.difficulty)}</div>
-        <div class="tg">${l.tagline}</div>${r ? `<div class="best">🏆 ${r.best}</div>` : ''}${onlineBests[l.id] ? `<div class="best world">🌍 ${onlineBests[l.id].score} ${onlineBests[l.id].name}</div>` : ''}`;
+        <div class="tg">${l.tagline}</div>${r ? `<div class="best">🏆 ${r.best}</div>` : ''}${onlineBests[l.id] ? `<div class="best world">🌍 ${onlineBests[l.id].score} ${esc(onlineBests[l.id].name)}</div>` : ''}`;
       b.setAttribute('aria-label', `${l.name}${unlocked ? '' : ' (chưa mở khoá)'}`);
       b.disabled = !unlocked;
       b.addEventListener('click', () => { DF.audio.sfx.click(); selectLevel(l); });
@@ -279,21 +280,24 @@
     box.classList.remove('hidden');
     box.innerHTML = '<div class="section-label">🌍 Bảng xếp hạng online</div><div class="subtitle" style="margin:0">Đang gửi điểm...</div>';
     const l = state.level;
-    const mine = new Set();
     let top = null;
+    const unnamed = [];
     for (const r of results) {
       if (r.score < 1) continue;
       const prof = state.profiles[r.slot];
-      mine.add(prof.name);
+      if (!DF.api.canSubmit(prof.name)) { unnamed.push(prof.name); continue; }
       const res = await DF.api.submit(l.id, prof.name, r.score, prof.emoji);
       if (res && res.top) top = res.top;
     }
     if (!top) { const t = await DF.api.top(l.id); top = t && t.top; }
     if (state.level !== l) return; // đã chuyển màn khác
+    const note = unnamed.length
+      ? `<div class="hint">✏️ ${unnamed.map(esc).join(', ')} chưa đặt tên riêng nên chưa lên bảng. Đổi tên ở trang chủ nhé.</div>` : '';
     if (!top) { box.innerHTML = '<div class="section-label">🌍 Bảng xếp hạng online</div><div class="subtitle" style="margin:0">Không kết nối được máy chủ.</div>'; return; }
+    const tempNote = DF.api.store === 'memory' ? '<div class="hint muted">Bảng tạm thời, sẽ xoá khi máy chủ khởi động lại.</div>' : '';
     box.innerHTML = `<div class="section-label">🌍 Bảng xếp hạng online · ${l.icon} ${l.name}</div>` +
-      (top.length ? top.map((t, i) => `<div class="srow${mine.has(t.name) ? ' me' : ''}"><span class="pos">${i + 1}</span><span class="em">${t.emoji || '🙂'}</span>${t.name}<span class="w">${t.score}</span></div>`).join('')
-        : '<div class="subtitle" style="margin:0">Chưa có ai. Bạn là người đầu tiên!</div>');
+      (top.length ? top.map((t, i) => `<div class="srow${t.me ? ' me' : ''}"><span class="pos">${i + 1}</span><span class="em">${esc(t.emoji || '🙂')}</span><span class="nm">${esc(t.name)}</span><span class="w">${t.score}</span></div>`).join('')
+        : `<div class="subtitle" style="margin:0">${unnamed.length ? 'Chưa có ai. Đặt tên riêng để thành người đầu tiên!' : 'Chưa có ai. Bạn là người đầu tiên!'}</div>`) + note + tempNote;
   }
 
   function renderResults(results, cleared, newBest) {
@@ -541,7 +545,14 @@
 
   async function init() {
     DF.audio.setMuted(!state.settings.sound);
-    DF.api.health().then(h => { $('#online-badge').classList.toggle('hidden', !h); });
+    DF.api.health().then(h => {
+      const b = $('#online-badge');
+      b.classList.toggle('hidden', !h);
+      if (h && h.store === 'memory') {
+        b.textContent = '🌍 Online · tạm';
+        b.title = 'Bảng xếp hạng chung đang ở chế độ tạm: sẽ xoá khi máy chủ khởi động lại. Chỉ gửi tên, biểu tượng và số ống.';
+      }
+    });
     DF.input.attach(stage);
     DF.input.setPlayerCount(state.settings.playerCount);
     await loadProfiles();

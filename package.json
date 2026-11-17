@@ -7,11 +7,11 @@
   "scripts": {
     "start": "node server/index.js",
     "static": "node tools/serve.js",
-    "test": "node --test tests/",
+    "test": "node --test \"tests/*.test.js\"",
     "shot": "node tools/screenshot.js"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "license": "Apache-2.0"
 }
