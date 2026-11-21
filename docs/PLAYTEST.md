@@ -35,6 +35,11 @@
 - `npm test`: 32/32 (thêm: trùng tên khác máy không ghi đè, cờ `me`, chặn tên mặc định, làm sạch tên, Redis giả cho `upstashStore`).
 - Chrome thật: tên chứa thẻ HTML hiện đúng dạng chữ; người chơi tên mặc định thấy lời nhắc đặt tên thay vì bị gửi điểm.
 
+## Kiểm tra v2.4 (21/11/2026)
+- `npm test`: 36/36 (thêm: mã tuần theo giờ VN kể cả năm 53 tuần, bảng tuần tách mọi lúc, bảng tổng chỉ cộng phần tăng, dựng bảng tổng từ dữ liệu cũ đúng một lần, API board/period).
+- Chrome thật với 5 người chơi giả: bảng tổng đúng (14+11+9+6 = 40), tên chứa HTML hiện dạng chữ, màn kết quả chuyển tuần/mọi lúc, 11 cảnh không lỗi console.
+- Chưa kiểm tra trên Upstash thật: lần deploy đầu sẽ dựng bảng tổng từ kỷ lục đã có (xem log Render dòng "Đã dựng bảng tổng").
+
 ## Cần chơi thử thật (chưa làm được tự động)
 - [ ] Trên Render với Upstash thật: `/api/health` trả `store: "upstash"`, điểm còn sau khi redeploy.
 - [ ] Tay cầm thật: nút A nhận đúng người, không nhận đúp.

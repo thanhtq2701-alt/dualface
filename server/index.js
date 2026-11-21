@@ -2,10 +2,12 @@
 /* Dual Face server: phục vụ trang tĩnh + API bảng xếp hạng online.
  * Không phụ thuộc gói ngoài. Chạy: node server/index.js  (PORT, UPSTASH_REDIS_REST_URL, UPSTASH_REDIS_REST_TOKEN)
  *
- *   GET  /api/health                      -> { ok, store }
- *   GET  /api/scores?level=<id>&pid=<máy> -> { level, top: [{name, score, emoji, at, me}] }
- *   GET  /api/bests?pid=<máy>             -> { bests: { <level>: {name, score, me} } }
- *   POST /api/scores {level, pid, name, score, emoji} -> { improved, best, top }
+ *   GET  /api/health                                   -> { ok, store }
+ *   GET  /api/scores?board=<màn|total>&period=<all|week>&pid=<máy>
+ *                                                      -> { board, period, week, resetsAt, top: [{name, score, emoji, at, me}] }
+ *        (tham số cũ `level=` vẫn nhận, coi như board)
+ *   GET  /api/bests?pid=<máy>                          -> { bests: { <màn>: {name, score, me} } }
+ *   POST /api/scores {level, pid, name, score, emoji}  -> { improved, best, weekImproved, weekBest, top, topWeek }
  *
  * pid = mã ngẫu nhiên mỗi trình duyệt tự tạo. Kỷ lục lưu theo pid + tên, nên người khác máy
  * trùng tên không ghi đè được. pid không bao giờ trả ra ngoài; client chỉ nhận cờ `me`.
@@ -14,11 +16,13 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
-const { createStore } = require('./store');
+const { createStore, weekId, weekResetsAt } = require('./store');
 
 const ROOT = path.resolve(__dirname, '..');
 const LEVELS = require(path.join(ROOT, 'web/js/levels.js'));
 const LEVEL_IDS = new Set(LEVELS.map(l => l.id));
+const BOARDS = new Set([...LEVEL_IDS, 'total']);
+const PERIODS = new Set(['all', 'week']);
 const TYPES = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8',
   '.json': 'application/json', '.png': 'image/png', '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.webmanifest': 'application/manifest+json'
@@ -93,10 +97,13 @@ function createServer(opts = {}) {
         if (!allow(ip)) return json(res, 429, { error: 'Chậm lại một chút nhé' });
         if (req.method === 'GET' && url.pathname === '/api/health') return json(res, 200, { ok: true, store: store.kind });
         if (req.method === 'GET' && url.pathname === '/api/scores') {
-          const level = url.searchParams.get('level');
-          if (!LEVEL_IDS.has(level)) return json(res, 400, { error: 'level' });
+          const board = url.searchParams.get('board') || url.searchParams.get('level');
+          const period = url.searchParams.get('period') || 'all';
+          if (!BOARDS.has(board)) return json(res, 400, { error: 'board' });
+          if (!PERIODS.has(period)) return json(res, 400, { error: 'period' });
           const pid = pidOf(url);
-          return json(res, 200, { level, top: (await store.top(level)).map(e => pub(e, pid)) });
+          const top = (await store.top(board, period)).map(e => pub(e, pid));
+          return json(res, 200, { board, period, week: weekId(), resetsAt: weekResetsAt(), top });
         }
         if (req.method === 'GET' && url.pathname === '/api/bests') {
           const pid = pidOf(url);
@@ -112,7 +119,8 @@ function createServer(opts = {}) {
           if (err) return json(res, 400, { error: err });
           const name = cleanName(body.name);
           const r = await store.submit(body.level, `${body.pid}:${name}`, name, body.score, body.emoji || '🙂');
-          return json(res, 200, { ...r, top: (await store.top(body.level)).map(e => pub(e, body.pid)) });
+          const [top, topWeek] = await Promise.all([store.top(body.level, 'all'), store.top(body.level, 'week')]);
+          return json(res, 200, { ...r, top: top.map(e => pub(e, body.pid)), topWeek: topWeek.map(e => pub(e, body.pid)), resetsAt: weekResetsAt() });
         }
         return json(res, 404, { error: 'not found' });
       }
@@ -140,7 +148,11 @@ function createServer(opts = {}) {
 if (require.main === module) {
   const PORT = +(process.env.PORT || 8080);
   const store = createStore();
-  createServer({ store }).listen(PORT, () => console.log(`Dual Face tại http://localhost:${PORT}/  (kho điểm: ${store.kind})`));
+  // Dựng bảng tổng một lần từ kỷ lục từng màn có từ trước; lỗi thì vẫn chạy game bình thường
+  store.rebuildTotal([...LEVEL_IDS])
+    .then(done => { if (done) console.log('Đã dựng bảng tổng từ dữ liệu cũ'); })
+    .catch(e => console.error('Không dựng được bảng tổng:', e.message))
+    .finally(() => createServer({ store }).listen(PORT, () => console.log(`Dual Face tại http://localhost:${PORT}/  (kho điểm: ${store.kind})`)));
 }
 
 module.exports = { createServer, validate, cleanName };

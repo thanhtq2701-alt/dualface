@@ -38,7 +38,9 @@ const SHOTS = [
   ['play-chaos', '?level=chaos&bots=1&players=4', 14000],
   ['play-ice', '?level=ice&bots=1&players=2', 9000],
   ['play-volcano', '?level=volcano&bots=1&players=2', 9000],
-  ['results-tour', '?bots=1&players=3&tour=volcano', 25000]
+  ['results-tour', '?bots=1&players=3&tour=volcano', 25000],
+  ['board', '?screen=board&period=week', 2500],
+  ['board-level', '?screen=board&board=volcano&period=all', 2500]
 ];
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));

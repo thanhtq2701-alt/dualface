@@ -10,11 +10,12 @@ Trò Flappy Bird 1-4 người dùng mặt thật (webcam), nhiều màn. Trang t
 - Sân chơi logic 400×600, scale bằng `transform` trên `#stage`; overlay HTML nằm trong `#stage` nên luôn khớp canvas.
 
 ## Lệnh
-- `npm start` → server Node (tĩnh + API, `server/index.js`) cổng 8080; `npm run static` → chỉ tĩnh. `npm test` → `node --test tests/`.
-- Deploy: Render Blueprint (`render.yaml`), hiện chưa dùng Upstash nên BXH là bộ nhớ tạm (game ghi "tạm"). Thêm 2 biến Upstash trong Environment để lưu lâu dài; có thể dùng chung DB với repo Hackathon (khoá khác: `df:v2:*` vs `fc:`/`room:`). GitHub Pages deploy bản tĩnh từ nhánh main. Không gửi ảnh mặt lên server.
+- `npm start` → server Node (tĩnh + API, `server/index.js`) cổng 8080; `npm run static` → chỉ tĩnh. `npm test` → `node --test "tests/*.test.js"`.
+- Deploy: chạy thật tại https://dualface.onrender.com (Render Blueprint `render.yaml`, tự deploy khi push main). BXH lưu trên Upstash, dùng chung database với repo Hackathon (khoá khác: `df:v2:*` vs `fc:`/`room:`); 2 biến Upstash đặt trong Environment của service, không nằm trong repo. Thiếu biến thì server tự về bộ nhớ tạm và game ghi "tạm". GitHub Pages deploy bản tĩnh từ nhánh main. Không gửi ảnh mặt lên server.
 - `npm test` dùng mẫu `"tests/*.test.js"` vì Node 22 không nhận tham số thư mục. CI chạy Node 22 và 24.
 - Ảnh README ở `docs/images/`, lấy từ `var/shots/*-stage.png` sau `npm run shot`.
-- `npm run shot` (sau `npm start`): chụp & kiểm tra lỗi console qua DevTools Protocol; tham số URL gỡ lỗi: `?screen=levels`, `?level=city&bots=1&players=3`, `?bots=1&players=3&tour=volcano`.
+- `npm run shot` (sau `npm start`): chụp & kiểm tra lỗi console qua DevTools Protocol; tham số URL gỡ lỗi: `?screen=levels`, `?screen=board&board=total&period=week`, `?level=city&bots=1&players=3`, `?bots=1&players=3&tour=volcano`.
+- BXH online: giữ nguyên khoá `df:v2:scores:*` và `df:v2:meta:*` vì đã có dữ liệu thật trên Upstash. Đổi cấu trúc khoá thì phải viết bước chuyển dữ liệu.
 - Vật phẩm/cơ chế mới: thêm cờ trong `mechanics`/`items` của level, xử lý trong `Flappy.update()` + `draw()`, và thêm test trong `tests/items.test.js`.
 
 ## Khi thêm màn

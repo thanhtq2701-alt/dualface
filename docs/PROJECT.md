@@ -67,7 +67,10 @@ index.html
 ### Bảng xếp hạng online (`server/`, `web/js/core/api.js`)
 - Server Node thuần: phục vụ `index.html` + `web/` (whitelist, không lộ `server/`, `tests/`), API `/api/*`, giới hạn 60 req/phút/IP.
 - Kho điểm: Upstash Redis REST hoặc bộ nhớ khi thiếu biến môi trường. Cùng interface `submit/top/bests`; test dùng một Redis giả nói giao thức REST nên không cần mạng.
-- Khoá: `df:v2:scores:<level>` (sorted set, member = `<pid>:<tên>`, `ZADD GT` chỉ tăng) và `df:v2:meta:<level>` (hash member → `{name, emoji, at}`).
+- Bảng (`board`) = một màn hoặc `total`; kỳ (`period`) = `all` hoặc `week` (tuần ISO theo giờ Việt Nam, reset 0h thứ Hai).
+- Khoá: `df:v2:scores:<board>` (mọi lúc, member = `<pid>:<tên>`), `df:v2:wk:<YYYY-Www>:<board>` (tuần, EXPIRE 21 ngày), `df:v2:meta:<board>` (hash member → `{name, emoji, at}`), `df:v2:built:total` (cờ đã dựng bảng tổng).
+- Gửi điểm: đọc kỷ lục cũ mọi lúc + tuần, rồi trong một pipeline `ZADD GT` từng màn và `ZINCRBY` bảng tổng đúng phần tăng. Hai lần gửi cùng lúc của cùng một người có thể cộng trùng; chấp nhận với trò chơi tiệc, nếu cần thì chuyển sang script Lua.
+- Server khởi động gọi `rebuildTotal()` một lần để dựng bảng tổng từ kỷ lục có trước tính năng; có cờ nên không chạy lại.
 - Danh tính: mỗi trình duyệt tự sinh `pid` (localStorage `dualface.pid`). Một dòng = một tên trên một máy, giống kiểu slither.io/snake.io: không cần tài khoản, trùng tên khác máy vẫn là hai dòng. Server không trả `pid` ra ngoài, chỉ trả cờ `me`.
 - Tên: bỏ ký tự điều khiển/ẩn, tối đa 10 ký tự, chặn tên mặc định (`Bạn N`, `Player N`, `P N`, `Người chơi`). Client escape HTML khi hiện tên người khác.
 - Client: `DF.api` tự tắt khi chạy từ `file://` hoặc khi `/api/health` 404 (GitHub Pages). Sau mỗi vòng, điểm > 0 của từng người được gửi với tên + emoji; màn kết quả hiện top 10, lưới chọn màn hiện 🌍 kỷ lục thế giới.
@@ -78,11 +81,13 @@ index.html
 - v2.1: vật phẩm, màn Băng giá & Núi lửa (10 màn), giải đấu, lưu ảnh kết quả, tay cầm. (16/11/2026)
 - v2.2: server + Upstash, bảng xếp hạng online, render.yaml. (16/11/2026)
 - v2.3: kỷ lục theo mã máy + tên, chặn tên mặc định, chống chèn HTML. Deploy Render không Upstash (BXH tạm). Sửa CI cho Node 22, README có ảnh. (17/11/2026)
+- Live: https://dualface.onrender.com, BXH trên Upstash dùng chung DB với Hackathon. (21/11/2026)
+- v2.4: bảng xếp hạng tuần + tổng 10 màn, màn hình Xếp hạng, màn kết quả chuyển tuần/mọi lúc. (21/11/2026)
 
 ## Ý tưởng tiếp theo
-- Màn "Boss": một ống khổng lồ đuổi theo, khe đổi vị trí liên tục.
-- Màn "Gương": sân lật ngang, bay từ phải sang trái.
-- Cho phép đổi phím nhảy từng người (lưu localStorage).
-- Chế độ "Đồng đội" 2v2: điểm chung theo cặp.
-- Lịch sử trận đấu & biểu đồ tiến bộ theo màn.
-- Hỗ trợ ngôn ngữ thứ hai (EN) bằng bảng chuỗi.
+- Thách đấu qua link: "An đạt 12 ống ở Núi lửa, vượt được không?" (chủ sở hữu hoãn lại).
+- Cài lên điện thoại như app (manifest + icon, mở toàn màn hình).
+- Đếm lượt chơi và vị trí chết theo từng màn để cân bằng độ khó.
+- Màn Boss: ống khổng lồ đuổi theo. Màn Gương: bay từ phải sang trái.
+- Đổi phím nhảy từng người. Chế độ đồng đội 2v2.
+- Lịch sử trận đấu, biểu đồ tiến bộ. Tiếng Anh.

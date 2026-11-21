@@ -10,9 +10,9 @@
 ![Dependencies](https://img.shields.io/badge/dependencies-0-2ec4b6)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
 
-| Trang chủ | 4 người cùng chơi | Vật phẩm | Kết quả & BXH |
+| Trang chủ | 4 người cùng chơi | Kết quả | Bảng xếp hạng |
 |:---:|:---:|:---:|:---:|
-| <img src="docs/images/home.png" width="200" alt="Trang chủ: chọn số người, chụp mặt"> | <img src="docs/images/play-4p.png" width="200" alt="Bốn người chơi ở màn Hỗn loạn"> | <img src="docs/images/play-items.png" width="200" alt="Nhặt vật phẩm thu nhỏ ở màn Thành phố đêm"> | <img src="docs/images/results.png" width="200" alt="Màn kết quả và bảng xếp hạng online"> |
+| <img src="docs/images/home.png" width="200" alt="Trang chủ: chọn số người, chụp mặt"> | <img src="docs/images/play-4p.png" width="200" alt="Bốn người chơi ở màn Hỗn loạn"> | <img src="docs/images/results.png" width="200" alt="Màn kết quả với bảng xếp hạng tuần của màn"> | <img src="docs/images/board.png" width="200" alt="Bảng xếp hạng tổng 10 màn trong tuần"> |
 
 > Bản tĩnh không có bảng xếp hạng online: [thanhtq2701-alt.github.io/dualface](https://thanhtq2701-alt.github.io/dualface/)
 
@@ -37,7 +37,10 @@
 - **Giải đấu**: chơi lần lượt 10 màn, cộng điểm theo hạng mỗi vòng, cuối giải có nhà vô địch.
 - **Vật phẩm** (từ màn 2): 🛡️ khiên đỡ một lần · 🪶 bay nhẹ · 🍄 thu nhỏ bản thân · 🎈 làm đối thủ phình to.
 - **Lưu ảnh kết quả**: ảnh PNG có mặt người thắng đội vương miện, để khoe.
-- **Bảng xếp hạng online**: top 10 mỗi màn, không cần tài khoản. Đặt tên riêng để được lên bảng.
+- **Bảng xếp hạng online**, không cần tài khoản, đặt tên riêng là được lên bảng:
+  - **Tuần này**: reset 0h thứ Hai giờ Việt Nam, người mới luôn có cơ hội lên top.
+  - **Mọi lúc**: kỷ lục giữ mãi.
+  - **Tổng 10 màn**: cộng kỷ lục của bạn ở cả 10 màn để tìm người giỏi nhất.
 
 ### 10 màn
 
@@ -66,11 +69,11 @@ Cần Node 22 trở lên. Không cần `npm install`.
 
 ```bash
 npm start            # game + API bảng xếp hạng: http://localhost:8080
-npm test             # 32 test: vật lý, từng màn với bot, vật phẩm, API, Redis giả
+npm test             # 36 test: vật lý, từng màn với bot, vật phẩm, API, bảng tuần/tổng, Redis giả
 npm run shot         # (sau npm start) chụp các màn bằng Chrome headless, báo lỗi console
 ```
 
-Tham số URL để thử nhanh: `?screen=levels`, `?level=city&bots=1&players=3`, `?bots=1&players=3&tour=volcano`.
+Tham số URL để thử nhanh: `?screen=levels`, `?screen=board&board=total&period=week`, `?level=city&bots=1&players=3`, `?bots=1&players=3&tour=volcano`.
 
 ## Deploy
 
@@ -85,9 +88,9 @@ Mặc định bảng xếp hạng lưu trong bộ nhớ: mất khi server ngủ 
 | Method | Đường dẫn | Mô tả |
 |---|---|---|
 | GET | `/api/health` | `{ok, store}`, `store` là `upstash` hoặc `memory` |
-| GET | `/api/scores?level=<id>&pid=<mã máy>` | top 10 của màn; dòng của máy này có `me: true` |
-| GET | `/api/bests?pid=<mã máy>` | kỷ lục cao nhất từng màn |
-| POST | `/api/scores` | `{level, pid, name, score, emoji}`, chỉ ghi khi cao hơn kỷ lục cũ |
+| GET | `/api/scores?board=<màn\|total>&period=<all\|week>&pid=<mã máy>` | top 10; dòng của máy này có `me: true`; kèm `week`, `resetsAt` |
+| GET | `/api/bests?pid=<mã máy>` | kỷ lục mọi lúc cao nhất từng màn |
+| POST | `/api/scores` | `{level, pid, name, score, emoji}`, ghi khi cao hơn kỷ lục cũ (mọi lúc và tuần), trả `top` + `topWeek` |
 
 Tên tối đa 10 ký tự, tên mặc định như "Bạn 1" bị từ chối. Giới hạn 60 yêu cầu mỗi phút mỗi IP.
 
@@ -116,7 +119,8 @@ Thêm một màn = thêm một object vào [`web/js/levels.js`](web/js/levels.js
 - Chế độ đồng đội 2v2.
 - Đổi phím nhảy cho từng người.
 - Lịch sử trận đấu và biểu đồ tiến bộ.
-- Bảng xếp hạng theo tuần, tiếng Anh.
+- Thách đấu qua link, cài lên điện thoại như app, đếm lượt chơi từng màn.
+- Tiếng Anh.
 
 ## Giấy phép
 

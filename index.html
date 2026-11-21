@@ -43,8 +43,9 @@
             <button id="btn-go-levels" class="btn block" data-autofocus>🗺️ CHỌN MÀN CHƠI</button>
             <div class="row">
               <button id="btn-quick" class="btn secondary">⚡ Chơi nhanh</button>
-              <button id="btn-help" class="btn secondary">❓ Hướng dẫn</button>
+              <button id="btn-board" class="btn secondary hidden">🏆 Xếp hạng</button>
             </div>
+            <button id="btn-help" class="btn ghost block">❓ Hướng dẫn chơi</button>
             <label class="section-label" style="display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;cursor:pointer">
               <input type="checkbox" id="opt-unlock"> Mở sẵn tất cả màn (không cần qua màn trước)
             </label>
@@ -145,6 +146,19 @@
         </div>
       </section>
 
+      <!-- BẢNG XẾP HẠNG -->
+      <section id="screen-board" class="overlay hidden" aria-label="Bảng xếp hạng">
+        <div class="overlay-card">
+          <h2 class="title" style="font-size:24px">🏆 XẾP HẠNG</h2>
+          <p class="subtitle">Người chơi trên mọi máy. Đặt tên riêng ở trang chủ để được lên bảng.</p>
+          <div id="board-period"></div>
+          <label class="section-label" for="board-pick">Bảng</label>
+          <select id="board-pick" class="pick"></select>
+          <div id="board-list" class="online board-list" aria-live="polite"></div>
+          <button id="btn-board-back" class="btn secondary block" data-autofocus>← Quay lại (Esc)</button>
+        </div>
+      </section>
+
       <!-- HƯỚNG DẪN -->
       <section id="screen-help" class="overlay hidden" aria-label="Hướng dẫn">
         <div class="overlay-card">
@@ -158,6 +172,7 @@
             <li>Nhấn phím nhảy để bắt đầu bay. Chạm ống, đất, trần, dơi hay thiên thạch là bị loại.</li>
             <li>Nhiều người: ai bay lâu nhất thắng vòng. Một người: cố đạt kỷ lục.</li>
             <li><kbd>Esc</kbd> hoặc <kbd>P</kbd> để tạm dừng. 🔊 để tắt tiếng. ⛶ để toàn màn hình.</li>
+            <li><b>🏆 Xếp hạng</b> (khi có 🌍 Online): bảng tuần reset 0h thứ Hai, bảng mọi lúc giữ mãi. Bảng <b>Tổng</b> cộng kỷ lục của bạn ở cả 10 màn.</li>
           </ol>
           <p class="subtitle">Ảnh mặt chỉ lưu trong trình duyệt của bạn (localStorage), không gửi đi đâu. Khi có 🌍 Online, chỉ tên + biểu tượng + số ống được gửi lên bảng xếp hạng chung.</p>
           <button id="btn-help-close" class="btn block" data-autofocus>Đã hiểu</button>

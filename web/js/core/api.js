@@ -43,7 +43,8 @@
     canSubmit(name) { return !RESERVED_RE.test(String(name || '').trim()); },
     store: null,   // 'upstash' (lâu dài) | 'memory' (tạm, mất khi server khởi động lại)
     async health() { const r = await call('/api/health'); if (!r) available = false; else DF.api.store = r.store; return r; },
-    top(level) { return call(`/api/scores?level=${encodeURIComponent(level)}&${q()}`); },
+    /** board: id màn hoặc 'total'; period: 'all' | 'week' */
+    top(board, period = 'all') { return call(`/api/scores?board=${encodeURIComponent(board)}&period=${period}&${q()}`); },
     bests() { return call(`/api/bests?${q()}`); },
     submit(level, name, score, emoji) {
       return call('/api/scores', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ level, pid, name, score, emoji }) });

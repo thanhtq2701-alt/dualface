@@ -21,6 +21,9 @@
     mode: 'single',            // 'single' | 'tour'
     tournament: null,          // { index, levels, points[4], history[] }
     camSlot: -1,
+    onlinePeriod: 'week',       // màn kết quả & màn Xếp hạng nhớ lựa chọn tuần/mọi lúc
+    online: null,               // dữ liệu bảng online của vòng vừa chơi
+    boardSel: { board: 'total', period: 'week', back: 'home' },
     lastResults: null,
     countdownTimer: null
   };
@@ -60,7 +63,7 @@
   /* ------------------------------------------------------------------ */
   /* Màn hình                                                            */
   /* ------------------------------------------------------------------ */
-  const SCREENS = ['home', 'levels', 'ready', 'pause', 'results', 'camera', 'emoji', 'help'];
+  const SCREENS = ['home', 'levels', 'ready', 'pause', 'results', 'camera', 'emoji', 'help', 'board'];
   function show(name) {
     state.screen = name;
     SCREENS.forEach(s => $('#screen-' + s).classList.toggle('hidden', s !== name));
@@ -251,6 +254,7 @@
   function resume() { if (state.screen === 'pause') show('playing'); }
 
   function finishRound(results) {
+    state.online = null;
     state.lastResults = results;
     state.series.rounds++;
     const l = state.level;
@@ -280,24 +284,98 @@
     box.classList.remove('hidden');
     box.innerHTML = '<div class="section-label">🌍 Bảng xếp hạng online</div><div class="subtitle" style="margin:0">Đang gửi điểm...</div>';
     const l = state.level;
-    let top = null;
-    const unnamed = [];
+    let data = null;
+    const unnamed = [], newBests = [];
     for (const r of results) {
       if (r.score < 1) continue;
       const prof = state.profiles[r.slot];
       if (!DF.api.canSubmit(prof.name)) { unnamed.push(prof.name); continue; }
       const res = await DF.api.submit(l.id, prof.name, r.score, prof.emoji);
-      if (res && res.top) top = res.top;
+      if (res && res.top) data = res;
+      if (res && res.weekImproved) newBests.push(prof.name);
     }
-    if (!top) { const t = await DF.api.top(l.id); top = t && t.top; }
+    if (!data) {
+      const [a, w] = await Promise.all([DF.api.top(l.id, 'all'), DF.api.top(l.id, 'week')]);
+      if (a && w) data = { top: a.top, topWeek: w.top, resetsAt: w.resetsAt };
+    }
     if (state.level !== l) return; // đã chuyển màn khác
-    const note = unnamed.length
-      ? `<div class="hint">✏️ ${unnamed.map(esc).join(', ')} chưa đặt tên riêng nên chưa lên bảng. Đổi tên ở trang chủ nhé.</div>` : '';
-    if (!top) { box.innerHTML = '<div class="section-label">🌍 Bảng xếp hạng online</div><div class="subtitle" style="margin:0">Không kết nối được máy chủ.</div>'; return; }
+    state.online = { level: l, data, unnamed, newBests };
+    renderOnlineBox();
+  }
+
+  /** Dòng bảng xếp hạng dùng chung cho màn kết quả và màn Xếp hạng. */
+  function boardRows(top, emptyMsg) {
+    if (!top.length) return `<div class="subtitle" style="margin:0">${emptyMsg}</div>`;
+    return top.map((t, i) => `<div class="srow${t.me ? ' me' : ''}"><span class="pos">${['🥇', '🥈', '🥉'][i] || i + 1}</span><span class="em">${esc(t.emoji || '🙂')}</span><span class="nm">${esc(t.name)}</span><span class="w">${t.score}</span></div>`).join('');
+  }
+
+  /** "còn 2 ngày 5 giờ" tới lúc bảng tuần reset. */
+  function untilReset(ms) {
+    const d = Math.max(0, ms - Date.now()), h = Math.floor(d / 3600000), days = Math.floor(h / 24);
+    if (days > 0) return `${days} ngày ${h % 24} giờ`;
+    if (h > 0) return `${h} giờ`;
+    return `${Math.max(1, Math.ceil(d / 60000))} phút`;
+  }
+
+  function periodSeg(id, period) {
+    return `<div id="${id}" class="seg small" role="group" aria-label="Kỳ xếp hạng">
+      <button data-period="week" aria-pressed="${period === 'week'}">Tuần này</button>
+      <button data-period="all" aria-pressed="${period === 'all'}">Mọi lúc</button></div>`;
+  }
+
+  function renderOnlineBox() {
+    const box = $('#results-online'), o = state.online;
+    if (!o) return;
+    const l = o.level, period = state.onlinePeriod;
+    const note = o.unnamed.length
+      ? `<div class="hint">✏️ ${o.unnamed.map(esc).join(', ')} chưa đặt tên riêng nên chưa lên bảng. Đổi tên ở trang chủ nhé.</div>` : '';
+    if (!o.data) { box.innerHTML = '<div class="section-label">🌍 Bảng xếp hạng online</div><div class="subtitle" style="margin:0">Không kết nối được máy chủ.</div>'; return; }
     const tempNote = DF.api.store === 'memory' ? '<div class="hint muted">Bảng tạm thời, sẽ xoá khi máy chủ khởi động lại.</div>' : '';
-    box.innerHTML = `<div class="section-label">🌍 Bảng xếp hạng online · ${l.icon} ${l.name}</div>` +
-      (top.length ? top.map((t, i) => `<div class="srow${t.me ? ' me' : ''}"><span class="pos">${i + 1}</span><span class="em">${esc(t.emoji || '🙂')}</span><span class="nm">${esc(t.name)}</span><span class="w">${t.score}</span></div>`).join('')
-        : `<div class="subtitle" style="margin:0">${unnamed.length ? 'Chưa có ai. Đặt tên riêng để thành người đầu tiên!' : 'Chưa có ai. Bạn là người đầu tiên!'}</div>`) + note + tempNote;
+    const top = period === 'week' ? o.data.topWeek || [] : o.data.top || [];
+    const empty = o.unnamed.length ? 'Chưa có ai. Đặt tên riêng để thành người đầu tiên!' : 'Chưa có ai. Bạn là người đầu tiên!';
+    const weekNote = period === 'week' && o.data.resetsAt ? `<div class="hint muted">Bảng tuần reset sau ${untilReset(o.data.resetsAt)}.</div>` : '';
+    const nb = o.newBests.length && period === 'week' ? `<div class="hint">🔥 Kỷ lục tuần mới: ${o.newBests.map(esc).join(', ')}</div>` : '';
+    box.innerHTML = `<div class="online-head"><div class="section-label">🌍 ${l.icon} ${l.name}</div>${periodSeg('seg-online', period)}</div>` +
+      boardRows(top, empty) + nb + note + weekNote + tempNote +
+      `<button id="btn-open-board" class="btn ghost small block">🏆 Xem bảng xếp hạng đầy đủ</button>`;
+    box.querySelector('#seg-online').addEventListener('click', e => {
+      const b = e.target.closest('button'); if (!b) return;
+      state.onlinePeriod = b.dataset.period; DF.audio.sfx.click(); renderOnlineBox();
+    });
+    box.querySelector('#btn-open-board').addEventListener('click', () => openBoard(l.id, period, 'results'));
+  }
+
+  /* ---- Màn Xếp hạng ---- */
+  function openBoard(board = 'total', period = state.onlinePeriod, back = 'home') {
+    state.boardSel = { board, period, back };
+    renderBoardControls();
+    show('board');
+    loadBoard();
+  }
+  function renderBoardControls() {
+    const sel = state.boardSel;
+    $('#board-period').innerHTML = periodSeg('seg-board', sel.period);
+    $('#seg-board').addEventListener('click', e => {
+      const b = e.target.closest('button'); if (!b) return;
+      sel.period = b.dataset.period; state.onlinePeriod = sel.period; DF.audio.sfx.click(); renderBoardControls(); loadBoard();
+    });
+    const pick = $('#board-pick');
+    pick.innerHTML = `<option value="total">🏆 Tổng 10 màn</option>` + DF.LEVELS.map(l => `<option value="${l.id}">${l.icon} Màn ${l.order}: ${l.name}</option>`).join('');
+    pick.value = sel.board;
+  }
+  async function loadBoard() {
+    const sel = state.boardSel, list = $('#board-list');
+    if (!DF.api.available) { list.innerHTML = '<div class="subtitle" style="margin:0">Cần kết nối máy chủ để xem bảng xếp hạng chung.</div>'; return; }
+    list.innerHTML = '<div class="subtitle" style="margin:0">Đang tải...</div>';
+    const want = `${sel.board}|${sel.period}`;
+    const r = await DF.api.top(sel.board, sel.period);
+    if (`${state.boardSel.board}|${state.boardSel.period}` !== want) return; // người chơi đã đổi lựa chọn
+    if (!r) { list.innerHTML = '<div class="subtitle" style="margin:0">Không kết nối được máy chủ.</div>'; return; }
+    const isTotal = sel.board === 'total';
+    const unit = isTotal ? 'tổng số ống ở 10 màn' : 'số ống';
+    list.innerHTML = boardRows(r.top, sel.period === 'week' ? 'Tuần này chưa có ai. Chơi một vòng để mở hàng!' : 'Chưa có ai. Chơi một vòng để mở hàng!') +
+      `<div class="hint muted">Điểm = ${unit}.${sel.period === 'week' && r.resetsAt ? ` Bảng tuần reset sau ${untilReset(r.resetsAt)} (0h thứ Hai).` : ''}</div>` +
+      (DF.api.store === 'memory' ? '<div class="hint muted">Bảng tạm thời, sẽ xoá khi máy chủ khởi động lại.</div>' : '');
   }
 
   function renderResults(results, cleared, newBest) {
@@ -504,6 +582,9 @@
     $('#btn-go-levels').addEventListener('click', () => { DF.audio.unlock(); DF.audio.sfx.click(); renderLevels(); show('levels'); });
     $('#btn-quick').addEventListener('click', () => { DF.audio.unlock(); state.level = state.level || DF.LEVELS[0]; renderReady(); show('ready'); });
     $('#btn-help').addEventListener('click', () => show('help'));
+    $('#btn-board').addEventListener('click', () => { DF.audio.unlock(); DF.audio.sfx.click(); openBoard('total', state.onlinePeriod, 'home'); });
+    $('#board-pick').addEventListener('change', e => { state.boardSel.board = e.target.value; DF.audio.sfx.click(); loadBoard(); });
+    $('#btn-board-back').addEventListener('click', () => { const back = state.boardSel.back; if (back === 'home') renderHome(); show(back); });
     $('#btn-help-close').addEventListener('click', () => show('home'));
     $('#opt-unlock').addEventListener('change', e => { state.settings.unlockAll = e.target.checked; saveSettings(); });
     $('#btn-sound').addEventListener('click', () => { const m = DF.audio.toggle(); state.settings.sound = !m; saveSettings(); $('#btn-sound').textContent = m ? '🔇' : '🔊'; });
@@ -533,6 +614,7 @@
         if (state.screen === 'playing') { e.preventDefault(); pause(); }
         else if (state.screen === 'pause') { e.preventDefault(); resume(); }
         else if (state.screen === 'camera' || state.screen === 'emoji' || state.screen === 'help') { show('home'); renderHome(); }
+        else if (state.screen === 'board') { const back = state.boardSel.back; if (back === 'home') renderHome(); show(back); }
         return;
       }
       if (state.screen === 'camera' && (e.code === 'Space' || e.code === 'Enter') && !$('#btn-capture').disabled) { e.preventDefault(); capture(); }
@@ -548,6 +630,7 @@
     DF.api.health().then(h => {
       const b = $('#online-badge');
       b.classList.toggle('hidden', !h);
+      $('#btn-board').classList.toggle('hidden', !h);
       if (h && h.store === 'memory') {
         b.textContent = '🌍 Online · tạm';
         b.title = 'Bảng xếp hạng chung đang ở chế độ tạm: sẽ xoá khi máy chủ khởi động lại. Chỉ gửi tên, biểu tượng và số ống.';
@@ -566,7 +649,8 @@
     const q = new URLSearchParams(location.search);
     if (q.get('level')) state.level = DF.levelById(q.get('level')) || DF.LEVELS[0];
     if (q.get('players')) { state.settings.playerCount = Math.max(1, Math.min(4, +q.get('players'))); renderHome(); }
-    if (q.get('screen')) { if (q.get('screen') === 'levels') renderLevels(); if (q.get('screen') === 'ready') renderReady(); show(q.get('screen')); }
+    if (q.get('screen') === 'board') openBoard(q.get('board') || 'total', q.get('period') || 'week');
+    else if (q.get('screen')) { if (q.get('screen') === 'levels') renderLevels(); if (q.get('screen') === 'ready') renderReady(); show(q.get('screen')); }
     if (q.get('bots')) (q.get('tour') ? startTournament(true, DF.levelById(q.get('tour')) ? q.get('tour') : null) : startRound(true));
   }
 
