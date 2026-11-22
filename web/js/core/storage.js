@@ -3,6 +3,7 @@
   'use strict';
   const DF = root.DF || (root.DF = {});
   const PREFIX = 'dualface.';
+  const HISTORY_LIMIT = 100;
 
   function get(key, fallback) {
     try {
@@ -41,6 +42,15 @@
     },
     getProfiles() { return get('profiles', []); },
     saveProfiles(p) { return set('profiles', p); },
+    getMatchHistory() {
+      const history = get('match-history', []);
+      return Array.isArray(history) ? history : [];
+    },
+    addMatchHistory(match) {
+      const history = this.getMatchHistory();
+      history.push(match);
+      return set('match-history', history.slice(-HISTORY_LIMIT));
+    },
     getSettings() { return Object.assign({ sound: true, hitboxHelp: true, playerCount: 2, unlockAll: false }, get('settings', {})); },
     saveSettings(s) { return set('settings', s); }
   };

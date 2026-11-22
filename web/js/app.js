@@ -24,6 +24,7 @@
     onlinePeriod: 'week',       // màn kết quả & màn Xếp hạng nhớ lựa chọn tuần/mọi lúc
     online: null,               // dữ liệu bảng online của vòng vừa chơi
     boardSel: { board: 'total', period: 'week', back: 'home' },
+    historyLevel: 'all',
     lastResults: null,
     countdownTimer: null
   };
@@ -63,7 +64,7 @@
   /* ------------------------------------------------------------------ */
   /* Màn hình                                                            */
   /* ------------------------------------------------------------------ */
-  const SCREENS = ['home', 'levels', 'ready', 'pause', 'results', 'camera', 'emoji', 'help', 'board'];
+  const SCREENS = ['home', 'levels', 'ready', 'pause', 'results', 'camera', 'emoji', 'help', 'board', 'history'];
   function show(name) {
     state.screen = name;
     SCREENS.forEach(s => $('#screen-' + s).classList.toggle('hidden', s !== name));
@@ -274,6 +275,12 @@
     renderResults(results, cleared, newBest);
     setTimeout(() => { show('results'); DF.audio.sfx.win(); }, 300);
     renderSide();
+    const savedHistory = DF.storage.addMatchHistory({
+      at: Date.now(), level: l.id, playerCount: results.length,
+      bots: state.game.players.some(p => p.bot),
+      results: results.map(r => ({ name: r.name, score: r.score, place: r.place, reason: r.reason, deathAt: r.deathAt }))
+    });
+    if (!savedHistory) toast('Không lưu được lịch sử trên thiết bị.');
     DF.api.recordStats(l.id, results.length, results.map(r => ({
       at: r.deathAt == null ? r.score : r.deathAt, reason: r.reason
     })));
@@ -379,6 +386,75 @@
     list.innerHTML = boardRows(r.top, sel.period === 'week' ? 'Tuần này chưa có ai. Chơi một vòng để mở hàng!' : 'Chưa có ai. Chơi một vòng để mở hàng!') +
       `<div class="hint muted">Điểm = ${unit}.${sel.period === 'week' && r.resetsAt ? ` Bảng tuần reset sau ${untilReset(r.resetsAt)} (0h thứ Hai).` : ''}</div>` +
       (DF.api.store === 'memory' ? '<div class="hint muted">Bảng tạm thời, sẽ xoá khi máy chủ khởi động lại.</div>' : '');
+  }
+
+  function historyChart(history, selectedLevel) {
+    const palette = ['#3b82f6', '#ef4444', '#22c55e', '#a855f7', '#f59e0b', '#06b6d4', '#ec4899', '#84cc16', '#f97316', '#14b8a6'];
+    const series = DF.LEVELS
+      .filter(l => selectedLevel === 'all' || l.id === selectedLevel)
+      .map((level, colorIndex) => ({
+        level, color: palette[colorIndex % palette.length],
+        rounds: history.filter(m => m.level === level.id).map(m => ({
+          score: Math.max(0, ...m.results.map(r => Number.isInteger(r.score) && r.score >= 0 ? r.score : 0)),
+          at: Number.isFinite(m.at) ? m.at : null
+        }))
+      }))
+      .filter(s => s.rounds.length);
+    if (!series.length) return '<div class="subtitle" style="margin:0">Chưa có dữ liệu để vẽ biểu đồ.</div>';
+
+    const maxScore = Math.max(1, ...series.flatMap(s => s.rounds.map(r => r.score)));
+    const x = (i, n) => n === 1 ? 180 : 28 + i * 304 / (n - 1);
+    const y = score => 130 - score * 108 / maxScore;
+    const lines = series.map(s => {
+      const points = s.rounds.map((r, i) => `${x(i, s.rounds.length)},${y(r.score)}`).join(' ');
+      const dots = s.rounds.map((r, i) => {
+        const date = r.at == null ? 'Không rõ ngày' : new Date(r.at).toLocaleDateString('vi-VN');
+        return `<circle cx="${x(i, s.rounds.length)}" cy="${y(r.score)}" r="3" fill="${s.color}"><title>${esc(date)} · ${r.score} ống</title></circle>`;
+      }).join('');
+      return `<polyline points="${points}" fill="none" stroke="${s.color}" stroke-width="2"/>${dots}`;
+    }).join('');
+    const legend = series.map(s => `<span style="color:${s.color}">● ${s.level.icon} ${esc(s.level.name)}</span>`).join(' · ');
+    return `<div class="section-label">Điểm cao nhất mỗi vòng theo thời gian</div>` +
+      `<svg viewBox="0 0 360 150" role="img" aria-label="Biểu đồ điểm cao nhất theo vòng" style="width:100%;height:auto">` +
+      `<line x1="28" y1="130" x2="340" y2="130" stroke="#64748b"/><line x1="28" y1="22" x2="28" y2="130" stroke="#64748b"/>` +
+      `<text x="2" y="25" fill="#94a3b8" font-size="10">${maxScore}</text><text x="16" y="133" fill="#94a3b8" font-size="10">0</text>${lines}</svg>` +
+      `<div class="hint muted">Mỗi vòng lấy điểm cao nhất trong số người chơi. Vòng bot cũng được tính.</div>` +
+      `<div class="hint">${legend}</div>`;
+  }
+
+  function renderHistory() {
+    const history = DF.storage.getMatchHistory().filter(m =>
+      m && typeof m === 'object' && DF.LEVELS.some(l => l.id === m.level) &&
+      Array.isArray(m.results) && m.results.every(r => r && typeof r === 'object')
+    );
+    const pick = $('#history-level');
+    pick.innerHTML = `<option value="all">Tất cả màn</option>` +
+      DF.LEVELS.map(l => `<option value="${l.id}">${l.icon} ${l.name}</option>`).join('');
+    if (state.historyLevel !== 'all' && !DF.LEVELS.some(l => l.id === state.historyLevel)) state.historyLevel = 'all';
+    pick.value = state.historyLevel;
+
+    const filtered = history.filter(m => state.historyLevel === 'all' || m.level === state.historyLevel);
+    $('#history-chart').innerHTML = historyChart(filtered, state.historyLevel);
+    const list = $('#history-list');
+    if (!filtered.length) {
+      list.innerHTML = '<div class="subtitle">Chưa có vòng nào trong lịch sử. Chơi một ván để bắt đầu!</div>';
+      return;
+    }
+    const reasons = { pipe: 'ống', ground: 'mặt đất', ceiling: 'trần', icicle: 'nhũ băng', fire: 'cầu lửa', hazard: 'chướng ngại', alive: 'còn sống' };
+    list.innerHTML = filtered.slice().reverse().map(match => {
+      const level = DF.LEVELS.find(l => l.id === match.level);
+      const date = Number.isFinite(match.at) ? new Date(match.at).toLocaleString('vi-VN') : 'Không rõ thời gian';
+      const players = match.results.filter(r => r && typeof r === 'object').map(r => {
+        const score = Number.isInteger(r.score) && r.score >= 0 ? r.score : 0;
+        const name = esc(typeof r.name === 'string' ? r.name : 'Người chơi');
+        const place = Number.isInteger(r.place) && r.place > 0 ? ` · hạng ${r.place}` : '';
+        const reason = reasons[r.reason] || 'không rõ';
+        const deathAt = Number.isInteger(r.deathAt) ? ` · chết ở ${r.deathAt} ống` : '';
+        return `${name}: ${score} ống${place} · ${reason}${deathAt}`;
+      }).join('<br>');
+      return `<div class="online" style="margin-bottom:8px"><strong>${level.icon} ${level.name}</strong>` +
+        `${match.bots ? ' · 🤖 Bot' : ''}<div class="hint muted">${esc(date)}</div><div class="hint">${players || 'Không có kết quả người chơi'}</div></div>`;
+    }).join('');
   }
 
   function renderResults(results, cleared, newBest) {
@@ -586,6 +662,9 @@
     $('#btn-quick').addEventListener('click', () => { DF.audio.unlock(); state.level = state.level || DF.LEVELS[0]; renderReady(); show('ready'); });
     $('#btn-help').addEventListener('click', () => show('help'));
     $('#btn-board').addEventListener('click', () => { DF.audio.unlock(); DF.audio.sfx.click(); openBoard('total', state.onlinePeriod, 'home'); });
+    $('#btn-history').addEventListener('click', () => { state.historyLevel = 'all'; renderHistory(); show('history'); });
+    $('#history-level').addEventListener('change', e => { state.historyLevel = e.target.value; renderHistory(); });
+    $('#btn-history-back').addEventListener('click', () => { renderHome(); show('home'); });
     $('#board-pick').addEventListener('change', e => { state.boardSel.board = e.target.value; DF.audio.sfx.click(); loadBoard(); });
     $('#btn-board-back').addEventListener('click', () => { const back = state.boardSel.back; if (back === 'home') renderHome(); show(back); });
     $('#btn-help-close').addEventListener('click', () => show('home'));
@@ -618,6 +697,7 @@
         else if (state.screen === 'pause') { e.preventDefault(); resume(); }
         else if (state.screen === 'camera' || state.screen === 'emoji' || state.screen === 'help') { show('home'); renderHome(); }
         else if (state.screen === 'board') { const back = state.boardSel.back; if (back === 'home') renderHome(); show(back); }
+        else if (state.screen === 'history') { renderHome(); show('home'); }
         return;
       }
       if (state.screen === 'camera' && (e.code === 'Space' || e.code === 'Enter') && !$('#btn-capture').disabled) { e.preventDefault(); capture(); }
