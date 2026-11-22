@@ -11,6 +11,7 @@
  *   df:v2:wk:<tuần>:<board>     sorted set theo tuần (tự hết hạn sau 21 ngày)
  *   df:v2:meta:<board>          hash key -> JSON {name, emoji, at}
  *   df:v2:built:total           cờ: đã dựng bảng tổng từ dữ liệu cũ
+ *   df:v2:stats:<level>         hash thống kê ẩn danh theo màn
  *
  * Bảng tổng tăng bằng ZINCRBY đúng phần chênh khi kỷ lục một màn tăng. Hai lần gửi cùng lúc
  * của cùng một người có thể cộng trùng một lần; chấp nhận được với trò chơi tiệc.
@@ -42,7 +43,8 @@ const K = {
   all: b => `df:v2:scores:${b}`,
   week: (w, b) => `df:v2:wk:${w}:${b}`,
   meta: b => `df:v2:meta:${b}`,
-  built: 'df:v2:built:total'
+  built: 'df:v2:built:total',
+  stats: level => `df:v2:stats:${level}`
 };
 const parseMeta = raw => { try { return JSON.parse(raw || '{}'); } catch (e) { return {}; } };
 
@@ -98,6 +100,39 @@ function makeStore(kind, ops) {
       return out;
     },
 
+    async recordStats(level, outcomes) {
+      const increments = new Map([['plays', 1]]);
+      outcomes.forEach(({ at, reason }) => {
+        const reasonField = `r:${reason}`;
+        increments.set(reasonField, (increments.get(reasonField) || 0) + 1);
+        if (reason !== 'alive') {
+          const pipeField = `p:${at >= 30 ? '30+' : at}`;
+          increments.set(pipeField, (increments.get(pipeField) || 0) + 1);
+        }
+      });
+      await ops.exec([...increments].map(([field, count]) => ['HINCRBY', K.stats(level), field, String(count)]));
+    },
+
+    async stats(levels) {
+      const hashes = await Promise.all(levels.map(level => ops.hgetall(K.stats(level))));
+      const out = {};
+      levels.forEach((level, i) => {
+        const fields = hashes[i] || {};
+        const count = value => {
+          const n = Number(value || 0);
+          if (!Number.isSafeInteger(n) || n < 0) throw new Error('Invalid stats count');
+          return n;
+        };
+        const reasons = {}, pipes = {};
+        Object.entries(fields).forEach(([field, value]) => {
+          if (field.startsWith('r:')) reasons[field.slice(2)] = count(value);
+          else if (field.startsWith('p:')) pipes[field.slice(2)] = count(value);
+        });
+        out[level] = { plays: count(fields.plays), reasons, pipes };
+      });
+      return out;
+    },
+
     /** Dựng bảng tổng mọi lúc từ kỷ lục từng màn (chạy một lần cho dữ liệu có trước tính năng này). */
     async rebuildTotal(levels) {
       if (await ops.get(K.built)) return false;
@@ -134,6 +169,7 @@ function memoryOps() {
     async exec(cmds) {
       for (const [c, k, ...a] of cmds) {
         if (c === 'HSET') hs(k).set(a[0], a[1]);
+        else if (c === 'HINCRBY') hs(k).set(a[0], String(Number(hs(k).get(a[0]) || 0) + Number(a[1])));
         else if (c === 'ZADD') {
           const gt = a[0] === 'GT', sc = Number(gt ? a[1] : a[0]), m = gt ? a[2] : a[1], cur = zs(k).get(m);
           if (!gt || cur == null || sc > cur) zs(k).set(m, sc);
@@ -147,6 +183,7 @@ function memoryOps() {
     async zrevrangeMany(keys, n) { return keys.map(k => rev(k, n)); },
     async hmget(k, ms) { return ms.map(m => (h.get(k) && h.get(k).get(m)) ?? null); },
     async hgetMany(pairs) { return pairs.map(([k, m]) => (h.get(k) && h.get(k).get(m)) ?? null); },
+    async hgetall(k) { return Object.fromEntries(h.get(k) || []); },
     async get(k) { return s.get(k) ?? null; }
   };
 }
@@ -171,6 +208,17 @@ function upstashOps(url, token, fetchImpl = globalThis.fetch) {
     async zrevrangeMany(keys, n) { return (await pipeline(keys.map(k => range(k, n)))).map(pairs); },
     async hmget(k, ms) { return ms.length ? (await pipeline([['HMGET', k, ...ms]]))[0] : []; },
     async hgetMany(ps) { return pipeline(ps.map(([k, m]) => ['HGET', k, m])); },
+    async hgetall(k) {
+      const raw = (await pipeline([['HGETALL', k]]))[0];
+      if (raw == null) return {};
+      if (Array.isArray(raw)) {
+        const out = {};
+        for (let i = 0; i < raw.length; i += 2) out[raw[i]] = raw[i + 1];
+        return out;
+      }
+      if (typeof raw === 'object') return raw;
+      throw new Error('Upstash: invalid HGETALL result');
+    },
     async get(k) { return (await pipeline([['GET', k]]))[0]; }
   };
 }

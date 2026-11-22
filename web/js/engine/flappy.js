@@ -68,6 +68,7 @@
       this.popups = [];
       this.players.forEach((p, i) => {
         p.y = H / 2 - 40 + i * 12; p.vy = 0; p.score = 0; p.alive = true; p.eliminatedAt = -1; p.tilt = 0;
+        p.deathReason = null; p.deathAt = null;
         p.size = 1; p.shield = false; p.inv = 0; p.feather = 0; p.big = 0; p.small = 0;
       });
     }
@@ -127,6 +128,7 @@
       }
       p.alive = false;
       p.eliminatedAt = this.tick;
+      p.deathReason = reason; p.deathAt = p.score;
       this.shake = 10;
       this.burst(p.x + p.w / 2, p.y + p.h / 2, p.color);
       this.onEvent('hit', p, reason);
@@ -343,7 +345,10 @@
     results() {
       const entries = this.players.map(p => ({ id: p.slot, alive: p.alive, score: p.score, eliminatedAt: p.eliminatedAt }));
       const places = U().placements(entries);
-      return this.players.map(p => ({ slot: p.slot, name: p.name, color: p.color, score: p.score, alive: p.alive, place: places.get(p.slot) }))
+      return this.players.map(p => ({
+        slot: p.slot, name: p.name, color: p.color, score: p.score, alive: p.alive, place: places.get(p.slot),
+        reason: p.alive ? 'alive' : p.deathReason, deathAt: p.deathAt
+      }))
         .sort((a, b) => a.place - b.place);
     }
 

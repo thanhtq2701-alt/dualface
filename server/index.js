@@ -8,6 +8,8 @@
  *        (tham số cũ `level=` vẫn nhận, coi như board)
  *   GET  /api/bests?pid=<máy>                          -> { bests: { <màn>: {name, score, me} } }
  *   POST /api/scores {level, pid, name, score, emoji}  -> { improved, best, weekImproved, weekBest, top, topWeek }
+ *   POST /api/stats {level, players, deaths:[{at, reason}]} -> ghi thống kê ẩn danh
+ *   GET  /api/stats                                    -> thống kê của mọi màn
  *
  * pid = mã ngẫu nhiên mỗi trình duyệt tự tạo. Kỷ lục lưu theo pid + tên, nên người khác máy
  * trùng tên không ghi đè được. pid không bao giờ trả ra ngoài; client chỉ nhận cờ `me`.
@@ -23,6 +25,7 @@ const LEVELS = require(path.join(ROOT, 'web/js/levels.js'));
 const LEVEL_IDS = new Set(LEVELS.map(l => l.id));
 const BOARDS = new Set([...LEVEL_IDS, 'total']);
 const PERIODS = new Set(['all', 'week']);
+const DEATH_REASONS = new Set(['pipe', 'ground', 'ceiling', 'icicle', 'fire', 'hazard', 'alive']);
 const TYPES = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8',
   '.json': 'application/json', '.png': 'image/png', '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.webmanifest': 'application/manifest+json'
@@ -64,6 +67,19 @@ function validate(b) {
   if (RESERVED_RE.test(name)) return 'reserved';
   if (!Number.isInteger(b.score) || b.score < 1 || b.score > 999) return 'score';
   if (b.emoji != null && (typeof b.emoji !== 'string' || b.emoji.length > 8)) return 'emoji';
+  return null;
+}
+
+function validateStats(b) {
+  if (!b || typeof b !== 'object') return 'body';
+  if (!LEVEL_IDS.has(b.level)) return 'level';
+  if (!Number.isInteger(b.players) || b.players < 1 || b.players > 4) return 'players';
+  if (!Array.isArray(b.deaths) || b.deaths.length > 4) return 'deaths';
+  for (const death of b.deaths) {
+    if (!death || typeof death !== 'object') return 'deaths';
+    if (!Number.isInteger(death.at) || death.at < 0 || death.at > 999) return 'at';
+    if (!DEATH_REASONS.has(death.reason)) return 'reason';
+  }
   return null;
 }
 
@@ -112,6 +128,17 @@ function createServer(opts = {}) {
           for (const [l, e] of Object.entries(raw)) bests[l] = { name: e.name, score: e.score, me: !!pid && e.key.startsWith(pid + ':') };
           return json(res, 200, { bests });
         }
+        if (req.method === 'GET' && url.pathname === '/api/stats') {
+          return json(res, 200, { stats: await store.stats([...LEVEL_IDS]) });
+        }
+        if (req.method === 'POST' && url.pathname === '/api/stats') {
+          let body;
+          try { body = JSON.parse(await readBody(req)); } catch (e) { return json(res, 400, { error: 'json' }); }
+          const err = validateStats(body);
+          if (err) return json(res, 400, { error: err });
+          await store.recordStats(body.level, body.deaths);
+          return json(res, 200, { ok: true });
+        }
         if (req.method === 'POST' && url.pathname === '/api/scores') {
           let body;
           try { body = JSON.parse(await readBody(req)); } catch (e) { return json(res, 400, { error: 'json' }); }
@@ -155,4 +182,4 @@ if (require.main === module) {
     .finally(() => createServer({ store }).listen(PORT, () => console.log(`Dual Face tại http://localhost:${PORT}/  (kho điểm: ${store.kind})`)));
 }
 
-module.exports = { createServer, validate, cleanName };
+module.exports = { createServer, validate, validateStats, cleanName };

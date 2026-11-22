@@ -46,6 +46,9 @@
     /** board: id màn hoặc 'total'; period: 'all' | 'week' */
     top(board, period = 'all') { return call(`/api/scores?board=${encodeURIComponent(board)}&period=${period}&${q()}`); },
     bests() { return call(`/api/bests?${q()}`); },
+    recordStats(level, players, deaths) {
+      return call('/api/stats', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ level, players, deaths }) });
+    },
     submit(level, name, score, emoji) {
       return call('/api/scores', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ level, pid, name, score, emoji }) });
     }

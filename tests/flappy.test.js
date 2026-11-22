@@ -41,6 +41,8 @@ test('nhấn một lần thì bắt đầu; không nhấn nữa sẽ rơi xuốn
   assert.ok(g.over, 'vòng phải kết thúc');
   assert.ok(events.includes('hit') && events.includes('over'));
   assert.equal(g.results()[0].alive, false);
+  assert.equal(g.results()[0].reason, 'ground');
+  assert.equal(g.results()[0].deathAt, 0);
 });
 
 test('bot qua được ít nhất vài ống ở màn 1 (kiểm tra ống & tính điểm hoạt động)', () => {
@@ -67,6 +69,10 @@ test('mọi màn đều chạy được với bot 2 người trong 4000 tick mà
     g.started = true;
     for (let t = 0; t < 4000 && !g.over; t++) g.update(idle);
     assert.ok(g.tick > 100, l.id);
+    g.results().forEach(result => {
+      assert.ok(['pipe', 'ground', 'ceiling', 'icicle', 'fire', 'hazard', 'alive'].includes(result.reason), l.id);
+      assert.ok(result.reason === 'alive' ? result.deathAt === null : Number.isInteger(result.deathAt), l.id);
+    });
   });
 });
 

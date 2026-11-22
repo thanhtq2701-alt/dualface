@@ -69,7 +69,7 @@ Cần Node 22 trở lên. Không cần `npm install`.
 
 ```bash
 npm start            # game + API bảng xếp hạng: http://localhost:8080
-npm test             # 36 test: vật lý, từng màn với bot, vật phẩm, API, bảng tuần/tổng, Redis giả
+npm test             # 40 test: vật lý, từng màn với bot, vật phẩm, API, bảng tuần/tổng, Redis giả
 npm run shot         # (sau npm start) chụp các màn bằng Chrome headless, báo lỗi console
 ```
 
@@ -91,8 +91,10 @@ Mặc định bảng xếp hạng lưu trong bộ nhớ: mất khi server ngủ 
 | GET | `/api/scores?board=<màn\|total>&period=<all\|week>&pid=<mã máy>` | top 10; dòng của máy này có `me: true`; kèm `week`, `resetsAt` |
 | GET | `/api/bests?pid=<mã máy>` | kỷ lục mọi lúc cao nhất từng màn |
 | POST | `/api/scores` | `{level, pid, name, score, emoji}`, ghi khi cao hơn kỷ lục cũ (mọi lúc và tuần), trả `top` + `topWeek` |
+| POST | `/api/stats` | `{level, players, deaths:[{at, reason}]}`, ghi một lượt chơi và kết quả từng người; không gửi pid, tên hoặc ảnh |
+| GET | `/api/stats` | `{stats: {<màn>: {plays, reasons, pipes}}}`; thống kê tổng hợp của 10 màn |
 
-Tên tối đa 10 ký tự, tên mặc định như "Bạn 1" bị từ chối. Giới hạn 60 yêu cầu mỗi phút mỗi IP.
+`reason` là `pipe`, `ground`, `ceiling`, `icicle`, `fire`, `hazard` hoặc `alive`; `at` là số ống đã qua khi chết (người sống dùng điểm hiện tại). Index 30 trở lên được gộp thành bucket `30+`. Thống kê gồm cả vòng có bot. Tên bảng xếp hạng tối đa 10 ký tự, tên mặc định như "Bạn 1" bị từ chối. Giới hạn 60 yêu cầu mỗi phút mỗi IP.
 
 ## Cấu trúc
 

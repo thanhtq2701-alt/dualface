@@ -1,7 +1,7 @@
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { createServer, validate, cleanName } = require('../server/index.js');
+const { createServer, validate, validateStats, cleanName } = require('../server/index.js');
 const { memoryStore, upstashStore, weekId, weekResetsAt, KEYS } = require('../server/store.js');
 
 const PID_A = 'aaaaaaaaaaaa1111', PID_B = 'bbbbbbbbbbbb2222';
@@ -16,6 +16,7 @@ async function withServer(store, fn) {
   try { await fn(base); } finally { await new Promise(r => srv.close(r)); }
 }
 const post = (base, body) => fetch(base + '/api/scores', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+const postStats = (base, body) => fetch(base + '/api/stats', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
 const get = async (base, q) => (await fetch(base + q)).json();
 
 /* Redis giả tối thiểu nói giao thức REST pipeline của Upstash, đủ cho các lệnh store.js dùng. */
@@ -35,8 +36,14 @@ function fakeUpstash() {
       case 'ZINCRBY': { const set = zs(a[0]); const v = (set.get(a[2]) || 0) + Number(a[1]); set.set(a[2], v); return String(v); }
       case 'EXPIRE': assert.ok(Number(a[1]) > 0); return 1;
       case 'HSET': hs(a[0]).set(a[1], a[2]); return 1;
+      case 'HINCRBY': {
+        const value = Number(hs(a[0]).get(a[1]) || 0) + Number(a[2]);
+        hs(a[0]).set(a[1], String(value));
+        return value;
+      }
       case 'HGET': return hs(a[0]).get(a[1]) ?? null;
       case 'HMGET': return a.slice(1).map(k => hs(a[0]).get(k) ?? null);
+      case 'HGETALL': return Object.fromEntries(hs(a[0]));
       case 'GET': return s.get(a[0]) ?? null;
       case 'SET': s.set(a[0], a[1]); return 'OK';
       case 'DEL': z.delete(a[0]); h.delete(a[0]); s.delete(a[0]); return 1;
@@ -79,6 +86,17 @@ test('cleanName bỏ ký tự điều khiển/ẩn và gộp khoảng trắng', 
   assert.equal(cleanName('  An​   Bình\n '), 'An Bình');
 });
 
+test('validateStats: level, số người, reason và pipe index', () => {
+  const ok = { level: 'meadow', players: 2, deaths: [{ at: 4, reason: 'pipe' }, { at: 0, reason: 'alive' }] };
+  assert.equal(validateStats(ok), null);
+  assert.equal(validateStats({ ...ok, level: 'nope' }), 'level');
+  assert.equal(validateStats({ ...ok, players: 0 }), 'players');
+  assert.equal(validateStats({ ...ok, players: 5 }), 'players');
+  assert.equal(validateStats({ ...ok, deaths: [{ at: 0, reason: 'unknown' }] }), 'reason');
+  assert.equal(validateStats({ ...ok, deaths: [{ at: 1000, reason: 'pipe' }] }), 'at');
+  assert.equal(validateStats({ ...ok, deaths: Array(5).fill({ at: 0, reason: 'alive' }) }), 'deaths');
+});
+
 /* ------------------------------- Tuần ------------------------------- */
 
 test('weekId theo giờ Việt Nam: tuần đổi đúng 0h thứ Hai', () => {
@@ -116,6 +134,17 @@ test('bảng tổng cộng kỷ lục các màn, chỉ cộng phần tăng', asy
   assert.deepEqual(await st.top('total', 'week', 10, T_W48), [], 'tuần mới bảng tổng tuần trống');
 });
 
+test('thống kê memoryStore đếm lượt, reason và gộp pipe index từ 30+', async () => {
+  const st = memoryStore();
+  await st.recordStats('meadow', [{ at: 4, reason: 'pipe' }, { at: 30, reason: 'ground' }, { at: 8, reason: 'alive' }]);
+  await st.recordStats('meadow', [{ at: 31, reason: 'pipe' }]);
+
+  assert.deepEqual(await st.stats(['meadow', 'cave']), {
+    meadow: { plays: 2, reasons: { pipe: 2, ground: 1, alive: 1 }, pipes: { 4: 1, '30+': 2 } },
+    cave: { plays: 0, reasons: {}, pipes: {} }
+  });
+});
+
 /* ------------------------------- Upstash (Redis giả) ------------------------------- */
 
 test('upstashStore gửi đúng lệnh Redis và giữ khoá dữ liệu cũ', async () => {
@@ -137,6 +166,20 @@ test('upstashStore gửi đúng lệnh Redis và giữ khoá dữ liệu cũ', a
 
   const bests = await st.bests(['meadow', 'sunset', 'cave']);
   assert.deepEqual(bests, { meadow: { key: `${PID_B}:An`, name: 'An', score: 9 }, cave: { key: `${PID_B}:An`, name: 'An', score: 2 } });
+});
+
+test('upstashStore lưu thống kê bằng HINCRBY/HGETALL ở key riêng', async () => {
+  const fake = fakeUpstash();
+  const st = upstashStore('https://x.upstash.io', 'tok', fake.fetchImpl);
+  await st.recordStats('meadow', [{ at: 30, reason: 'fire' }, { at: 2, reason: 'alive' }]);
+
+  assert.deepEqual(await st.stats(['meadow']), {
+    meadow: { plays: 1, reasons: { fire: 1, alive: 1 }, pipes: { '30+': 1 } }
+  });
+  assert.ok(fake.log.includes('HINCRBY'));
+  assert.ok(fake.log.includes('HGETALL'));
+  assert.ok(fake.h.has(KEYS.stats('meadow')));
+  assert.equal(fake.z.has(KEYS.all('meadow')), false, 'không đụng key leaderboard');
 });
 
 test('rebuildTotal dựng bảng tổng từ kỷ lục cũ đúng một lần', async () => {
@@ -183,6 +226,25 @@ test('API: gửi điểm trả top mọi lúc + tuần; trùng tên khác máy l
     assert.equal((await fetch(base + '/api/scores?board=total&period=month')).status, 400);
     assert.equal((await post(base, { level: 'meadow', pid: PID_A, name: 'Bạn 1', score: 9 })).status, 400);
     assert.equal((await fetch(base + '/api/scores', { method: 'POST', body: '{oops' })).status, 400);
+  });
+});
+
+test('API thống kê ẩn danh: POST cộng số liệu, GET trả đủ màn, dữ liệu sai bị từ chối', async () => {
+  await withServer(memoryStore(), async base => {
+    const body = { level: 'meadow', players: 2, deaths: [{ at: 5, reason: 'pipe' }, { at: 9, reason: 'alive' }] };
+    const sent = await postStats(base, body);
+    assert.equal(sent.status, 200);
+    assert.deepEqual(await sent.json(), { ok: true });
+
+    assert.equal((await postStats(base, { ...body, level: 'unknown' })).status, 400);
+    assert.equal((await postStats(base, { ...body, players: 0 })).status, 400);
+    assert.equal((await postStats(base, { ...body, deaths: [{ at: 0, reason: 'name' }] })).status, 400);
+    assert.equal((await postStats(base, { ...body, deaths: [{ at: 1000, reason: 'pipe' }] })).status, 400);
+
+    const response = await get(base, '/api/stats');
+    assert.equal(Object.keys(response.stats).length, 10);
+    assert.deepEqual(response.stats.meadow, { plays: 1, reasons: { pipe: 1, alive: 1 }, pipes: { 5: 1 } });
+    assert.deepEqual(response.stats.cave, { plays: 0, reasons: {}, pipes: {} });
   });
 });
 

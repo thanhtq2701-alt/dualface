@@ -274,6 +274,9 @@
     renderResults(results, cleared, newBest);
     setTimeout(() => { show('results'); DF.audio.sfx.win(); }, 300);
     renderSide();
+    DF.api.recordStats(l.id, results.length, results.map(r => ({
+      at: r.deathAt == null ? r.score : r.deathAt, reason: r.reason
+    })));
     submitOnline(results);
   }
 

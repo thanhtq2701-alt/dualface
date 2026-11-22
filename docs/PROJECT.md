@@ -64,16 +64,17 @@ index.html
 ### Tay cầm
 `DF.input.pollGamepads()` gọi mỗi khung khi đang chơi; tay cầm thứ i → người chơi i; nút 0-3 là nhảy (cạnh nhấn).
 
-### Bảng xếp hạng online (`server/`, `web/js/core/api.js`)
+### Bảng xếp hạng & thống kê online (`server/`, `web/js/core/api.js`)
 - Server Node thuần: phục vụ `index.html` + `web/` (whitelist, không lộ `server/`, `tests/`), API `/api/*`, giới hạn 60 req/phút/IP.
-- Kho điểm: Upstash Redis REST hoặc bộ nhớ khi thiếu biến môi trường. Cùng interface `submit/top/bests`; test dùng một Redis giả nói giao thức REST nên không cần mạng.
+- Kho điểm và thống kê: Upstash Redis REST hoặc bộ nhớ khi thiếu biến môi trường. Store có interface `submit/top/bests/recordStats/stats`; test dùng một Redis giả nói giao thức REST nên không cần mạng.
 - Bảng (`board`) = một màn hoặc `total`; kỳ (`period`) = `all` hoặc `week` (tuần ISO theo giờ Việt Nam, reset 0h thứ Hai).
-- Khoá: `df:v2:scores:<board>` (mọi lúc, member = `<pid>:<tên>`), `df:v2:wk:<YYYY-Www>:<board>` (tuần, EXPIRE 21 ngày), `df:v2:meta:<board>` (hash member → `{name, emoji, at}`), `df:v2:built:total` (cờ đã dựng bảng tổng).
+- Khoá: `df:v2:scores:<board>` (mọi lúc, member = `<pid>:<tên>`), `df:v2:wk:<YYYY-Www>:<board>` (tuần, EXPIRE 21 ngày), `df:v2:meta:<board>` (hash member → `{name, emoji, at}`), `df:v2:built:total` (cờ đã dựng bảng tổng), `df:v2:stats:<level>` (hash lượt chơi, reason và pipe index).
 - Gửi điểm: đọc kỷ lục cũ mọi lúc + tuần, rồi trong một pipeline `ZADD GT` từng màn và `ZINCRBY` bảng tổng đúng phần tăng. Hai lần gửi cùng lúc của cùng một người có thể cộng trùng; chấp nhận với trò chơi tiệc, nếu cần thì chuyển sang script Lua.
 - Server khởi động gọi `rebuildTotal()` một lần để dựng bảng tổng từ kỷ lục có trước tính năng; có cờ nên không chạy lại.
 - Danh tính: mỗi trình duyệt tự sinh `pid` (localStorage `dualface.pid`). Một dòng = một tên trên một máy, giống kiểu slither.io/snake.io: không cần tài khoản, trùng tên khác máy vẫn là hai dòng. Server không trả `pid` ra ngoài, chỉ trả cờ `me`.
 - Tên: bỏ ký tự điều khiển/ẩn, tối đa 10 ký tự, chặn tên mặc định (`Bạn N`, `Player N`, `P N`, `Người chơi`). Client escape HTML khi hiện tên người khác.
 - Client: `DF.api` tự tắt khi chạy từ `file://` hoặc khi `/api/health` 404 (GitHub Pages). Sau mỗi vòng, điểm > 0 của từng người được gửi với tên + emoji; màn kết quả hiện top 10, lưới chọn màn hiện 🌍 kỷ lục thế giới.
+- Thống kê cân bằng: sau mỗi vòng client gửi level, số người và `{at, reason}` của từng kết quả, kể cả vòng bot; payload không có pid, tên hay ảnh. Server cộng `plays`, `r:<reason>` và `p:<index>`; người sống có reason `alive`, pipe index từ 30 trở lên vào chung bucket `30+`. `GET /api/stats` chỉ trả số liệu tổng hợp cho 10 màn.
 - Không chống gian lận: đây là trò chơi tiệc, ai gửi POST tay thì tự chịu. Có thể thêm HMAC từ server nếu cần.
 
 ## Đã làm
