@@ -10,7 +10,7 @@ index.html
  └─ #stage (400×600, scale bằng transform)
      ├─ <canvas #game>          DF.Flappy.draw()
      ├─ #hud, #countdown        cập nhật bởi app.js theo sự kiện engine
-     └─ .overlay (home, levels, ready, pause, results, camera, emoji, help)
+     └─ .overlay (home, levels, ready, pause, results, camera, emoji, help, board, history)
 ```
 
 | Module | Vai trò |
@@ -19,11 +19,13 @@ index.html
 | `core/physics.js` | va chạm AABB/tròn, `hitsPipe`, `fall`, `ramp` – thuần, có test |
 | `core/audio.js` | SFX tổng hợp WebAudio, mỗi người một cao độ nhảy |
 | `core/input.js` | 4 slot phím, cạnh nhấn theo tick, vùng chạm chia cột |
-| `core/storage.js` | localStorage: hồ sơ (tên/emoji/ảnh), kỷ lục theo màn, màn mở khoá, cài đặt |
+| `core/storage.js` | localStorage: hồ sơ (tên/emoji/ảnh), kỷ lục theo màn, màn mở khoá, cài đặt, lịch sử 100 vòng |
 | `core/camera.js` | mở webcam, cắt vùng giữa thành ảnh vuông 128px lật gương |
 | `engine/flappy.js` | toàn bộ luật chơi: ống, khe hẹp dần, tốc độ tăng, cơ chế màn, bot, hiệu ứng, vẽ |
 | `levels.js` | 8 cấu hình màn |
-| `app.js` | máy trạng thái, vòng lặp fixed-step 60Hz, HUD, kết quả, chuỗi vòng thắng |
+| `app.js` | máy trạng thái, vòng lặp fixed-step 60Hz, HUD, kết quả, lịch sử và biểu đồ tiến bộ |
+
+Lịch sử dùng khoá `dualface.match-history`, lưu thời gian, màn, cờ bot và kết quả cần thiết (tên/điểm/thứ hạng/lý do chết/pipe index). Chỉ giữ 100 vòng mới nhất trên thiết bị; không lưu ảnh mặt hoặc gửi lịch sử lên server.
 
 ### Vòng lặp
 `requestAnimationFrame` + accumulator 1000/60 ms, tối đa 5 bước/khung. Tốc độ game không phụ thuộc tần số quét màn hình (bản v1 bị nhanh gấp đôi trên màn 120Hz).
@@ -84,11 +86,11 @@ index.html
 - v2.3: kỷ lục theo mã máy + tên, chặn tên mặc định, chống chèn HTML. Deploy Render không Upstash (BXH tạm). Sửa CI cho Node 22, README có ảnh. (17/11/2026)
 - Live: https://dualface.onrender.com, BXH trên Upstash dùng chung DB với Hackathon. (21/11/2026)
 - v2.4: bảng xếp hạng tuần + tổng 10 màn, màn hình Xếp hạng, màn kết quả chuyển tuần/mọi lúc. (21/11/2026)
+- Thống kê độ khó theo màn và lịch sử trận/biểu đồ điểm cục bộ; không lưu ảnh mặt. (22/11/2026)
 
 ## Ý tưởng tiếp theo
 - Thách đấu qua link: "An đạt 12 ống ở Núi lửa, vượt được không?" (chủ sở hữu hoãn lại).
 - Cài lên điện thoại như app (manifest + icon, mở toàn màn hình).
-- Đếm lượt chơi và vị trí chết theo từng màn để cân bằng độ khó.
 - Màn Boss: ống khổng lồ đuổi theo. Màn Gương: bay từ phải sang trái.
 - Đổi phím nhảy từng người. Chế độ đồng đội 2v2.
-- Lịch sử trận đấu, biểu đồ tiến bộ. Tiếng Anh.
+- Tiếng Anh.

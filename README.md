@@ -69,7 +69,7 @@ Cần Node 22 trở lên. Không cần `npm install`.
 
 ```bash
 npm start            # game + API bảng xếp hạng: http://localhost:8080
-npm test             # 40 test: vật lý, từng màn với bot, vật phẩm, API, bảng tuần/tổng, Redis giả
+npm test             # 43 test: vật lý, từng màn với bot, vật phẩm, API, bảng tuần/tổng, Redis giả, lịch sử
 npm run shot         # (sau npm start) chụp các màn bằng Chrome headless, báo lỗi console
 ```
 
@@ -82,6 +82,8 @@ Tham số URL để thử nhanh: `?screen=levels`, `?screen=board&board=total&pe
 Mặc định bảng xếp hạng lưu trong bộ nhớ: mất khi server ngủ (15 phút không ai chơi) hoặc deploy lại, và game ghi rõ "tạm" cho người chơi. Muốn giữ lâu dài, thêm hai biến `UPSTASH_REDIS_REST_URL` và `UPSTASH_REDIS_REST_TOKEN` trong tab Environment của service. Có thể dùng chung một database Upstash với dự án khác vì Dual Face chỉ dùng khoá `df:v2:*`.
 
 **GitHub Pages** tự deploy bản tĩnh từ nhánh `main`. Game tự ẩn phần online khi không có máy chủ.
+
+Lịch sử trận và biểu đồ tiến bộ chỉ lưu trên thiết bị hiện tại, giữ tối đa 100 vòng gần nhất; không lưu ảnh mặt và không đồng bộ dữ liệu này lên server.
 
 ### API
 

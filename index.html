@@ -45,6 +45,7 @@
               <button id="btn-quick" class="btn secondary">⚡ Chơi nhanh</button>
               <button id="btn-board" class="btn secondary hidden">🏆 Xếp hạng</button>
             </div>
+            <button id="btn-history" class="btn secondary block">📈 Lịch sử & tiến bộ</button>
             <button id="btn-help" class="btn ghost block">❓ Hướng dẫn chơi</button>
             <label class="section-label" style="display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;cursor:pointer">
               <input type="checkbox" id="opt-unlock"> Mở sẵn tất cả màn (không cần qua màn trước)
@@ -156,6 +157,19 @@
           <select id="board-pick" class="pick"></select>
           <div id="board-list" class="online board-list" aria-live="polite"></div>
           <button id="btn-board-back" class="btn secondary block" data-autofocus>← Quay lại (Esc)</button>
+        </div>
+      </section>
+
+      <!-- LỊCH SỬ -->
+      <section id="screen-history" class="overlay hidden" aria-label="Lịch sử và tiến bộ">
+        <div class="overlay-card">
+          <h2 class="title" style="font-size:24px">📈 LỊCH SỬ & TIẾN BỘ</h2>
+          <p class="subtitle">Lưu trên thiết bị này · tối đa 100 vòng · không lưu ảnh mặt</p>
+          <label class="section-label" for="history-level">Màn chơi</label>
+          <select id="history-level" class="pick"></select>
+          <div id="history-chart" class="online" aria-live="polite"></div>
+          <div id="history-list" class="board-list" aria-live="polite"></div>
+          <button id="btn-history-back" class="btn secondary block" data-autofocus>← Trang chủ (Esc)</button>
         </div>
       </section>
 
